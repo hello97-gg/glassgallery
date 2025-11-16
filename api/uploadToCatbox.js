@@ -50,6 +50,7 @@ export default async function handler(req, res) {
     // --- NSFW Detection with Gemini ---
     let isNSFW = false;
     try {
+        console.log(`Starting Gemini NSFW check for ${name}...`);
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -62,12 +63,14 @@ export default async function handler(req, res) {
             },
         });
         const geminiResult = response.text.trim().toLowerCase();
+        console.log(`Gemini raw response for ${name}: "${geminiResult}"`);
         isNSFW = geminiResult.includes('yes');
-        console.log(`Gemini NSFW check for ${name}: ${isNSFW}`);
+        console.log(`Gemini NSFW check for ${name} completed. Result isNSFW: ${isNSFW}`);
     } catch(err) {
-        console.error("Gemini API error:", err);
+        console.error("Gemini API error during NSFW check:", err);
         // Fail safe: if Gemini fails, assume it's not NSFW to avoid blocking uploads.
         isNSFW = false;
+        console.log(`Failing safe for ${name}. Setting isNSFW to false.`);
     }
     // --- End NSFW Detection ---
 
