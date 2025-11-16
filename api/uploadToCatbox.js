@@ -3,7 +3,7 @@
 import fetch from "node-fetch";
 import FormData from "form-data";
 import sharp from "sharp";
-import { JigsawStack } from "jigsawstack";
+import { GoogleGenAI } from "@google/genai";
 
 // Increase the body parser limit to handle larger base64 image uploads.
 export const config = {
@@ -13,30 +13,6 @@ export const config = {
     },
   },
 };
-
-// Helper function to determine if the moderation result is NSFW
-const isModerationResultNSFW = (moderation) => {
-  if (!moderation) return false;
-
-  const nsfwCategories = moderation.nsfw || {};
-  const goreCategories = moderation.gore || {};
-  const nsfwFlags = ['POSSIBLE', 'LIKELY', 'VERY_LIKELY'];
-
-  for (const key in nsfwCategories) {
-    if (nsfwFlags.includes(nsfwCategories[key])) {
-      console.log(`NSFW flag triggered by: ${key} = ${nsfwCategories[key]}`);
-      return true;
-    }
-  }
-  for (const key in goreCategories) {
-    if (nsfwFlags.includes(goreCategories[key])) {
-      console.log(`NSFW flag triggered by: ${key} = ${goreCategories[key]}`);
-      return true;
-    }
-  }
-  return false;
-};
-
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -51,23 +27,58 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing 'file' or 'name' in request body." });
     }
     
-    // --- NSFW Moderation with JigsawStack ---
+    // --- NSFW Moderation with Google Gemini ---
     let isNSFW = false;
     try {
-        if (!process.env.JIGSAWSTACK_API_KEY) {
-            console.warn("JIGSAWSTACK_API_KEY environment variable not found. Skipping NSFW check.");
+      if (!process.env.API_KEY) {
+        console.warn("API_KEY environment variable not found. Skipping NSFW check.");
+      } else {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        const getMimeType = (filename) => {
+          const extension = filename.split('.').pop().toLowerCase();
+          switch (extension) {
+            case 'jpg':
+            case 'jpeg':
+              return 'image/jpeg';
+            case 'png':
+              return 'image/png';
+            case 'gif':
+              return 'image/gif';
+            case 'webp':
+              return 'image/webp';
+            default:
+              return 'image/jpeg';
+          }
+        };
+
+        const imagePart = {
+          inlineData: {
+            mimeType: getMimeType(name),
+            data: file, // `file` is the base64 string from the client
+          },
+        };
+
+        const textPart = {
+          text: "Analyze this image for sensitive content. Categories to consider are: explicit nudity, graphic violence or gore, and sexually explicit material. Respond with only 'yes' if it falls into any of these categories, or 'no' if it does not.",
+        };
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: { parts: [imagePart, textPart] },
+        });
+
+        const resultText = response.text.trim().toLowerCase();
+        if (resultText === 'yes') {
+          isNSFW = true;
+          console.log("Image flagged as NSFW by Gemini.");
         } else {
-            const jigsaw = new JigsawStack({ apiKey: process.env.JIGSAWSTACK_API_KEY });
-            const moderationResponse = await jigsaw.image.moderate({ image: file });
-            if (moderationResponse.success) {
-                isNSFW = isModerationResultNSFW(moderationResponse.moderation);
-            } else {
-                console.warn("JigsawStack moderation failed, proceeding without NSFW flag.", moderationResponse);
-            }
+          console.log("Image classified as safe by Gemini.");
         }
+      }
     } catch (moderationError) {
-        console.error("Error during JigsawStack moderation:", moderationError);
-        // Don't block upload if moderation fails, just proceed without the flag
+      console.error("Error during Gemini moderation:", moderationError);
+      // Don't block upload if moderation fails, just proceed without the flag
     }
     // --- End NSFW Moderation ---
 
