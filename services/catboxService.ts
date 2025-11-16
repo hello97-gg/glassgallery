@@ -53,6 +53,7 @@ export const uploadToCatbox = async (file: File): Promise<{ url: string; isNSFW:
     }
 
     const data = await response.json();
+    console.log('Server response from NSFW check:', data); // Log the server's response
     
     if (!data.url || !data.url.startsWith('http')) {
         throw new Error(`Invalid URL received from server: ${data.url}`);

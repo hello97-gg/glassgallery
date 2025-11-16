@@ -58,6 +58,24 @@ export default async function handler(req, res) {
                 { inlineData: { mimeType: 'image/jpeg', data: buffer.toString('base64') } },
                 { text: "Analyze the image for Not Safe For Work (NSFW) content. Categories to consider include explicit nudity, graphic violence, gore, and sexually suggestive themes. If the image contains content from any of these categories, respond with the single word 'yes'. Otherwise, respond with the single word 'no'." }
             ]},
+            safetySettings: [
+                {
+                    category: 'HARM_CATEGORY_HARASSMENT',
+                    threshold: 'BLOCK_NONE',
+                },
+                {
+                    category: 'HARM_CATEGORY_HATE_SPEECH',
+                    threshold: 'BLOCK_NONE',
+                },
+                {
+                    category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                    threshold: 'BLOCK_NONE',
+                },
+                {
+                    category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                    threshold: 'BLOCK_NONE',
+                },
+            ],
             config: {
                 systemInstruction: "You are an expert content moderation AI. Your task is to accurately classify images based on their content. Respond only with 'yes' or 'no' as instructed.",
             },
