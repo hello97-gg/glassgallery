@@ -12,7 +12,7 @@ const GoogleIcon = () => (
     </svg>
 );
 const AppleIcon = () => (
-    <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+    <svg className="w-5 h-5 mr-3 text-primary" viewBox="0 0 24 24" fill="currentColor">
         <path d="M19.171,11.752c0,1.388-0.612,2.688-1.745,3.611c-1.07,0.869-2.556,1.35-3.98,1.35c-0.129,0-0.516-0.035-0.854-0.081c-0.902-0.126-1.847-0.342-2.825-0.342c-1.012,0-1.957,0.216-2.858,0.342c-0.338,0.046-0.725,0.081-0.854,0.081c-1.424,0-2.91-0.481-3.98-1.35c-1.133-0.923-1.745-2.223-1.745-3.611c0-1.913,1.18-3.483,2.959-3.483c0.902,0,1.758,0.387,2.57,1.069c0.75,0.63,1.35,1.528,1.893,1.528c0.543,0,1.143-0.898,1.893-1.528c0.812-0.682,1.668-1.069,2.57-1.069C17.991,8.269,19.171,9.839,19.171,11.752z M15.227,6.012c0.75-0.855,1.293-1.98,1.571-3.155c-1.314-0.034-2.736,0.683-3.61,1.571c-0.75,0.765-1.425,1.966-1.636,3.121C12.865,7.633,14.319,6.969,15.227,6.012z"></path>
     </svg>
 );
@@ -28,19 +28,19 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-            <div className="w-full max-w-sm text-center bg-surface rounded-2xl shadow-lg p-8 space-y-8" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+            <div className="w-full max-w-sm text-center bg-surface border border-border rounded-2xl shadow-lg p-8 space-y-6" onClick={(e) => e.stopPropagation()}>
                 <div className="relative">
                     <button onClick={onClose} className="absolute -top-4 -right-4 text-secondary hover:text-primary transition-colors text-3xl leading-none">&times;</button>
-                    <h1 className="text-4xl font-bold tracking-tighter text-primary">
+                    <h1 className="text-3xl font-bold tracking-tight text-primary">
                         Welcome!
                     </h1>
-                    <p className="text-lg text-secondary mt-2">
+                    <p className="text-md text-secondary mt-2">
                         Sign in to create and share your images.
                     </p>
                 </div>
-                <div className="space-y-4 pt-4">
-                    <Button onClick={() => handleLogin(signInWithGoogle)} fullWidth>
+                <div className="space-y-4 pt-2">
+                    <Button onClick={() => handleLogin(signInWithGoogle)} fullWidth variant="secondary">
                         <GoogleIcon /> Sign in with Google
                     </Button>
                     <Button onClick={() => handleLogin(signInWithApple)} fullWidth variant="secondary">

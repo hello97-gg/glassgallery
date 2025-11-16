@@ -14,9 +14,9 @@ const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, onClose }) => {
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="md:w-2/3 bg-background flex items-center justify-center p-4">
+        <div className="md:w-2/3 bg-background flex items-center justify-center p-2">
             <img src={image.imageUrl} alt="Detailed view" className="max-w-full max-h-[50vh] md:max-h-[85vh] object-contain rounded-lg" />
         </div>
         <div className="md:w-1/3 p-6 space-y-4 overflow-y-auto text-primary relative">

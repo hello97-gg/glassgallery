@@ -9,7 +9,7 @@ interface ImageCardProps {
 const ImageCard: React.FC<ImageCardProps> = ({ image, onClick }) => {
   return (
     <div
-      className="group relative bg-surface rounded-xl overflow-hidden cursor-pointer shadow-sm border border-transparent hover:border-border transition-all duration-300 hover:shadow-md hover:scale-[1.02] mb-4 md:mb-6 break-inside-avoid"
+      className="group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid"
       onClick={onClick}
     >
       <img
@@ -18,7 +18,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, onClick }) => {
         className="w-full h-auto object-cover"
         loading="lazy"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
         <div className="flex items-center space-x-2">
             <img 
                 src={image.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${image.uploaderName}`}

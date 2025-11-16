@@ -89,15 +89,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 md:p-8">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-primary">Upload an Image</h2>
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-primary">Upload an Image</h2>
                 <button onClick={onClose} className="text-secondary hover:text-primary transition-colors text-3xl leading-none">&times;</button>
             </div>
             
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-secondary mb-2">Image File</label>
                     <label 
@@ -130,7 +130,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                     <label className="block text-sm font-medium text-secondary">Flags</label>
                     <div className="mt-2 flex flex-wrap gap-2">
                         {FLAGS.map(flag => (
-                            <button key={flag} type="button" onClick={() => handleFlagToggle(flag)} className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedFlags.includes(flag) ? 'bg-accent text-white' : 'bg-border text-secondary hover:bg-border/80'}`}>
+                            <button key={flag} type="button" onClick={() => handleFlagToggle(flag)} className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedFlags.includes(flag) ? 'bg-accent text-primary' : 'bg-border text-secondary hover:bg-border/80'}`}>
                                 {flag}
                             </button>
                         ))}
@@ -144,7 +144,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
                 {error && <p className="text-sm text-red-500">{error}</p>}
 
-                <div className="flex justify-end gap-4 pt-4">
+                <div className="flex justify-end gap-3 pt-2">
                     <Button type="button" onClick={onClose} variant="secondary">Cancel</Button>
                     <Button type="submit" disabled={isLoading || !file}>
                         {isLoading ? <Spinner /> : 'Upload'}

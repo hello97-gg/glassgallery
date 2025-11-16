@@ -74,12 +74,14 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen w-full bg-background text-primary font-sans">
-      <Sidebar 
-        user={user} 
-        onCreateClick={handleCreateClick} 
-        onLoginClick={() => setLoginModalOpen(true)} 
-      />
-      <main className="flex-1 pl-24 pr-8 py-8">
+      <div className="flex-shrink-0">
+         <Sidebar 
+            user={user} 
+            onCreateClick={handleCreateClick} 
+            onLoginClick={() => setLoginModalOpen(true)} 
+          />
+      </div>
+      <main className="flex-1 p-6 md:p-8">
         {authLoading || imagesLoading ? (
           <div className="flex justify-center items-center h-full">
             <Spinner />
