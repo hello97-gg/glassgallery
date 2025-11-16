@@ -61,10 +61,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileSelect(e.dataTransfer.files[0]);
+      // Manually set the files for the input element to help with state consistency
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.files = e.dataTransfer.files;
+      }
     }
   };
 
   const handleFlagToggle = (flag: string) => {
+    setError(null); // Clear error when user interacts with tags
     setSelectedFlags(prev =>
       prev.includes(flag) ? prev.filter(f => f !== flag) : [...prev, flag]
     );
@@ -72,7 +78,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !user) return;
+    
+    // Validation checks
+    if (!file) {
+      setError("Please select an image to upload.");
+      return;
+    }
+    if (selectedFlags.length === 0) {
+      setError("Please select at least one tag for the image.");
+      return;
+    }
+    if (!user) return;
+
 
     setIsLoading(true);
     setError(null);
@@ -115,7 +132,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                                 <p className="text-sm text-secondary">Drag 'n' drop or click to upload</p>
                             </div>
                         )}
-                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" required/>
+                        {/* Fix: Removed 'required' attribute to prevent browser validation from blocking drag-and-drop submission */}
+                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*"/>
                     </label>
                 </div>
 
@@ -127,7 +145,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-secondary">Flags</label>
+                    <label className="block text-sm font-medium text-secondary">Tags (select at least one)</label>
                     <div className="mt-2 flex flex-wrap gap-2">
                         {FLAGS.map(flag => (
                             <button key={flag} type="button" onClick={() => handleFlagToggle(flag)} className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedFlags.includes(flag) ? 'bg-accent text-primary' : 'bg-border text-secondary hover:bg-border/80'}`}>
@@ -146,7 +164,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
                 <div className="flex justify-end gap-3 pt-2">
                     <Button type="button" onClick={onClose} variant="secondary">Cancel</Button>
-                    <Button type="submit" disabled={isLoading || !file}>
+                    <Button type="submit" disabled={isLoading || !file || selectedFlags.length === 0}>
                         {isLoading ? <Spinner /> : 'Upload'}
                     </Button>
                 </div>
