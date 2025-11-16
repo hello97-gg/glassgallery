@@ -99,6 +99,13 @@ const App: React.FC = () => {
     setProfileUser(null); // Clear profile when navigating away
   }
 
+  const handleImageUpdate = (updatedImage: ImageMeta) => {
+    setImages(prevImages => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img));
+    if (selectedImage && selectedImage.id === updatedImage.id) {
+        setSelectedImage(updatedImage);
+    }
+  };
+
   const renderContent = () => {
     if (authLoading || (imagesLoading && activeView !== 'profile')) {
        return (
@@ -149,8 +156,10 @@ const App: React.FC = () => {
       {selectedImage && (
         <ImageDetailModal
           image={selectedImage}
+          user={user}
           onClose={() => setSelectedImage(null)}
           onViewProfile={handleViewProfile}
+          onImageUpdate={handleImageUpdate}
         />
       )}
     </div>

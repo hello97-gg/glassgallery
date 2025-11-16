@@ -1,4 +1,5 @@
 
+
 import { db } from './firebase';
 // Fix: Use Firebase v8 compatibility imports.
 import firebase from 'firebase/compat/app';
@@ -64,3 +65,13 @@ export const getImagesByUploader = async (uploaderUid: string): Promise<ImageMet
       throw error;
     }
   };
+
+export const updateImageDetails = async (imageId: string, updates: { license: string; flags: string[] }) => {
+    try {
+        const imageRef = db.collection("images").doc(imageId);
+        await imageRef.update(updates);
+    } catch (error) {
+        console.error("Error updating document: ", error);
+        throw error;
+    }
+};
