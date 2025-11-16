@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { uploadToCatbox } from '../services/catboxService';
 import { addImageToFirestore } from '../services/firestoreService';
@@ -6,6 +6,9 @@ import { LICENSES, FLAGS } from '../constants';
 import Button from './Button';
 import Spinner from './Spinner';
 import imageCompression from 'browser-image-compression';
+import * as nsfwjs from 'nsfwjs';
+import * as tf from '@tensorflow/tfjs';
+import { setWasmPaths } from '@tensorflow/tfjs-backend-wasm';
 
 interface UploadModalProps {
   user: User;
@@ -23,6 +26,29 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const [loadingMessage, setLoadingMessage] = useState('Processing image...');
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  
+  const [isNsfw, setIsNsfw] = useState(false);
+  const [nsfwModel, setNsfwModel] = useState<nsfwjs.NSFWJS | null>(null);
+  const [isModelLoading, setIsModelLoading] = useState(true);
+
+  useEffect(() => {
+    const loadModel = async () => {
+      try {
+        console.log('Setting up NSFWJS model...');
+        setWasmPaths('https://aistudiocdn.com/@tensorflow/tfjs-backend-wasm@^4.20.0/dist/');
+        await tf.setBackend('wasm');
+        const model = await nsfwjs.load();
+        setNsfwModel(model);
+        console.log('NSFWJS model loaded.');
+      } catch (err) {
+        console.error("Failed to load NSFWJS model", err);
+        setError("Could not load content moderator. Uploads may proceed without checks.");
+      } finally {
+        setIsModelLoading(false);
+      }
+    };
+    loadModel();
+  }, []);
 
   const handleFileSelect = async (selectedFile: File) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -31,6 +57,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
         setError(null);
         setPreview(null);
         setFile(null);
+        setIsNsfw(false);
 
         try {
             const options = {
@@ -44,7 +71,40 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
             setFile(compressedFile);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setPreview(reader.result as string);
+                const previewUrl = reader.result as string;
+                setPreview(previewUrl);
+
+                if (nsfwModel) {
+                    setLoadingMessage('Analyzing content...');
+                    const img = document.createElement('img');
+                    img.src = previewUrl;
+                    img.onload = async () => {
+                        try {
+                            const predictions = await nsfwModel.classify(img);
+                            console.log('NSFW Predictions:', predictions);
+                            const nsfwPrediction = predictions.find(p =>
+                                (p.className === 'Porn' || p.className === 'Hentai' || p.className === 'Sexy') && p.probability > 0.65
+                            );
+                            const isNsfwDetected = !!nsfwPrediction;
+                            setIsNsfw(isNsfwDetected);
+                             if (isNsfwDetected) {
+                                console.log(`NSFW content detected: ${nsfwPrediction?.className} (${(nsfwPrediction.probability * 100).toFixed(2)}%)`);
+                            }
+                        } catch (err) {
+                             console.error("NSFW check failed:", err);
+                             setError("Content analysis failed. Assuming content is safe.");
+                             setIsNsfw(false); // Fail safe
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    };
+                    img.onerror = () => {
+                        setError("Could not load image for analysis.");
+                        setIsLoading(false);
+                    };
+                } else {
+                     setIsLoading(false); // No model, just finish loading
+                }
             };
             reader.readAsDataURL(compressedFile);
 
@@ -53,7 +113,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
             setError("Could not process the image. Please try a different one.");
             setFile(null);
             setPreview(null);
-        } finally {
             setIsLoading(false);
         }
     } else {
@@ -71,7 +130,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isLoading) {
+    if (!isLoading && !isModelLoading) {
         setIsDragging(true);
     }
   };
@@ -86,7 +145,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    if (isLoading) return;
+    if (isLoading || isModelLoading) return;
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileSelect(e.dataTransfer.files[0]);
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
@@ -118,11 +177,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
 
     setIsLoading(true);
-    setLoadingMessage('Uploading & analyzing...');
+    setLoadingMessage('Uploading image...');
     setError(null);
     try {
-      const { url: imageUrl, isNSFW } = await uploadToCatbox(file);
-      await addImageToFirestore(user, imageUrl, license, selectedFlags, isNSFW, originalWorkUrl);
+      const { url: imageUrl } = await uploadToCatbox(file);
+      await addImageToFirestore(user, imageUrl, license, selectedFlags, isNsfw, originalWorkUrl);
       onUploadSuccess();
     } catch (err) {
       setError('Upload failed. Please try again.');
@@ -131,6 +190,35 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
       setIsLoading(false);
     }
   };
+
+  const renderUploadState = () => {
+      if (isModelLoading) {
+          return (
+             <div className="flex flex-col items-center text-center">
+                <Spinner />
+                <p className="mt-2 text-sm text-secondary">Loading content moderator...</p>
+            </div>
+          );
+      }
+      if (isLoading) {
+          return (
+             <div className="flex flex-col items-center text-center">
+                <Spinner />
+                <p className="mt-2 text-sm text-secondary">{loadingMessage}</p>
+            </div>
+          );
+      }
+       if (preview) {
+           return <img src={preview} alt="Preview" className="max-h-full rounded-md object-contain" />;
+       }
+
+       return (
+            <div className="space-y-1 text-center">
+                <svg className="mx-auto h-12 w-12 text-secondary/50" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                <p className="text-sm text-secondary">Drag 'n' drop or click to upload</p>
+            </div>
+       );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -149,22 +237,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`mt-1 flex justify-center items-center h-48 px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-md transition-colors ${isLoading ? '' : 'cursor-pointer'} ${isDragging ? 'border-accent bg-accent/10' : 'hover:border-secondary/50'}`}
+                        className={`mt-1 flex justify-center items-center h-48 px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-md transition-colors ${(isLoading || isModelLoading) ? '' : 'cursor-pointer'} ${isDragging ? 'border-accent bg-accent/10' : 'hover:border-secondary/50'}`}
                     >
-                        {isLoading ? (
-                            <div className="flex flex-col items-center text-center">
-                                <Spinner />
-                                <p className="mt-2 text-sm text-secondary">{loadingMessage}</p>
-                            </div>
-                        ) : preview ? (
-                            <img src={preview} alt="Preview" className="max-h-full rounded-md object-contain" />
-                        ) : (
-                            <div className="space-y-1 text-center">
-                                <svg className="mx-auto h-12 w-12 text-secondary/50" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                <p className="text-sm text-secondary">Drag 'n' drop or click to upload</p>
-                            </div>
-                        )}
-                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" disabled={isLoading} />
+                        {renderUploadState()}
+                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" disabled={isLoading || isModelLoading} />
                     </label>
                 </div>
 
@@ -195,8 +271,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
                 <div className="flex justify-end gap-3 pt-2">
                     <Button type="button" onClick={onClose} variant="secondary">Cancel</Button>
-                    <Button type="submit" disabled={isLoading || !file || selectedFlags.length === 0}>
-                        {isLoading ? <Spinner /> : 'Upload'}
+                    <Button type="submit" disabled={isLoading || !file || selectedFlags.length === 0 || isModelLoading}>
+                        {isLoading || isModelLoading ? <Spinner /> : 'Upload'}
                     </Button>
                 </div>
             </form>

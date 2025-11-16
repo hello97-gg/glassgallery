@@ -1,6 +1,5 @@
 // This is a serverless function that acts as a proxy to the Catbox API.
 // It's designed to run in an environment like Vercel or Netlify.
-import { GoogleGenAI } from "@google/genai";
 import fetch from "node-fetch";
 import FormData from "form-data";
 import sharp from "sharp";
@@ -47,68 +46,6 @@ export default async function handler(req, res) {
     }
     // --- End Compression Logic ---
 
-    // --- NSFW Detection with Gemini ---
-    let isNSFW = false;
-    try {
-        console.log(`Starting Gemini NSFW check for ${name}...`);
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        
-        const prompt = `
-          You are an expert content moderation AI. Analyze the provided image for Not Safe For Work (NSFW) content.
-          Your response must be a JSON object with a single key: "is_nsfw" (boolean).
-
-          Consider the following categories as NSFW and set "is_nsfw" to true:
-          - Explicit nudity, sexually explicit acts, or overly suggestive content.
-          - Graphic violence, severe injury, gore, or bloodshed.
-          - Hateful symbols or harassment.
-
-          If the image is safe for a general audience (SFW), set "is_nsfw" to false.
-          Respond ONLY with the JSON object.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { 
-                parts: [
-                    { inlineData: { mimeType: 'image/jpeg', data: buffer.toString('base64') } },
-                    { text: prompt }
-                ]
-            },
-            safetySettings: [
-                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-            ],
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: 'OBJECT',
-                    properties: {
-                        is_nsfw: {
-                            type: 'BOOLEAN',
-                            description: 'True if the image contains NSFW content, false otherwise.'
-                        }
-                    },
-                    required: ['is_nsfw']
-                },
-            },
-        });
-
-        const geminiResultJsonString = response.text.trim();
-        console.log(`Gemini raw JSON response for ${name}: ${geminiResultJsonString}`);
-        const geminiResult = JSON.parse(geminiResultJsonString);
-        isNSFW = geminiResult.is_nsfw;
-        console.log(`Gemini NSFW check for ${name} completed. Result isNSFW: ${isNSFW}`);
-
-    } catch(err) {
-        console.error("Gemini API error during NSFW check:", err);
-        // Fail safe: if Gemini fails, assume it's not NSFW to avoid blocking uploads.
-        isNSFW = false;
-        console.log(`Failing safe for ${name}. Setting isNSFW to false.`);
-    }
-    // --- End NSFW Detection ---
-
     const formData = new FormData();
     formData.append("reqtype", "fileupload");
     formData.append("fileToUpload", buffer, name);
@@ -134,7 +71,7 @@ export default async function handler(req, res) {
         throw new Error(`Received an invalid response from Catbox: ${fileUrl}`);
     }
 
-    res.status(200).json({ url: fileUrl, isNSFW });
+    res.status(200).json({ url: fileUrl });
 
   } catch (err) {
     console.error("Error in /api/uploadToCatbox:", err);
