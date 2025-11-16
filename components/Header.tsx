@@ -13,9 +13,9 @@ const Header: React.FC<HeaderProps> = ({ user, onUploadClick }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-lg border-b border-white/10">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-white/5">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <h1 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+        <h1 className="text-xl font-bold tracking-tight text-text-main">
           Glass Gallery
         </h1>
         <div className="flex items-center space-x-4">
@@ -27,14 +27,14 @@ const Header: React.FC<HeaderProps> = ({ user, onUploadClick }) => {
               <img
                 src={user.photoURL || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.uid}`}
                 alt="User Avatar"
-                className="w-10 h-10 rounded-full border-2 border-purple-500"
+                className="w-10 h-10 rounded-full border-2 border-surface"
               />
             </button>
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-gray-800/80 backdrop-blur-lg border border-white/10 rounded-lg shadow-xl py-1">
-                <div className="px-4 py-2 text-sm text-gray-300 border-b border-white/10">
+              <div className="absolute right-0 mt-2 w-48 bg-surface border border-white/5 rounded-lg shadow-xl py-1">
+                <div className="px-4 py-2 text-sm text-text-muted border-b border-white/5">
                   Signed in as<br />
-                  <span className="font-semibold text-white">{user.displayName || user.email}</span>
+                  <span className="font-semibold text-text-main">{user.displayName || user.email}</span>
                 </div>
                 <a
                   href="#"
@@ -43,7 +43,7 @@ const Header: React.FC<HeaderProps> = ({ user, onUploadClick }) => {
                     logOut();
                     setDropdownOpen(false);
                   }}
-                  className="block px-4 py-2 text-sm text-red-400 hover:bg-red-500/20"
+                  className="block px-4 py-2 text-sm text-red-400 hover:bg-red-500/10"
                 >
                   Sign Out
                 </a>

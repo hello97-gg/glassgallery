@@ -9,7 +9,7 @@ const GoogleIcon = () => (
     </svg>
 );
 const AppleIcon = () => (
-    <svg className="w-5 h-5 mr-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+    <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
         <path d="M19.171,11.752c0,1.388-0.612,2.688-1.745,3.611c-1.07,0.869-2.556,1.35-3.98,1.35c-0.129,0-0.516-0.035-0.854-0.081c-0.902-0.126-1.847-0.342-2.825-0.342c-1.012,0-1.957,0.216-2.858,0.342c-0.338,0.046-0.725,0.081-0.854,0.081c-1.424,0-2.91-0.481-3.98-1.35c-1.133-0.923-1.745-2.223-1.745-3.611c0-1.913,1.18-3.483,2.959-3.483c0.902,0,1.758,0.387,2.57,1.069c0.75,0.63,1.35,1.528,1.893,1.528c0.543,0,1.143-0.898,1.893-1.528c0.812-0.682,1.668-1.069,2.57-1.069C17.991,8.269,19.171,9.839,19.171,11.752z M15.227,6.012c0.75-0.855,1.293-1.98,1.571-3.155c-1.314-0.034-2.736,0.683-3.61,1.571c-0.75,0.765-1.425,1.966-1.636,3.121C12.865,7.633,14.319,6.969,15.227,6.012z"></path>
     </svg>
 );
@@ -33,14 +33,14 @@ const LoginScreen: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-purple-900 text-white p-4">
-            <div className="w-full max-w-md text-center">
-                <div className="p-8 space-y-8 bg-black/20 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl">
-                    <h1 className="text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-text-main p-4">
+            <div className="w-full max-w-sm text-center">
+                <div className="p-8 space-y-8 bg-surface rounded-2xl shadow-lg">
+                    <h1 className="text-5xl font-bold tracking-tighter text-text-main">
                         Glass Gallery
                     </h1>
-                    <p className="text-lg text-gray-300">
-                        Sign in to upload and share your images on a modern, beautiful platform.
+                    <p className="text-lg text-text-muted">
+                        Sign in to upload and share your images.
                     </p>
                     <div className="space-y-4 pt-4">
                         <Button onClick={handleGoogleLogin} fullWidth>

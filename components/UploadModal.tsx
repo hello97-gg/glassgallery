@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
 import { uploadToCatbox } from '../services/catboxService';
@@ -89,30 +90,30 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-gray-800/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-surface border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 md:p-8">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Upload an Image</h2>
-                <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-3xl leading-none">&times;</button>
+                <h2 className="text-2xl font-bold text-text-main">Upload an Image</h2>
+                <button onClick={onClose} className="text-text-muted hover:text-text-main transition-colors text-3xl leading-none">&times;</button>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Image File</label>
+                    <label className="block text-sm font-medium text-text-muted mb-2">Image File</label>
                     <label 
                         htmlFor="file-upload"
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`mt-1 flex justify-center items-center h-48 px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md cursor-pointer transition-colors ${isDragging ? 'border-purple-500 bg-purple-900/30' : 'hover:border-gray-500'}`}
+                        className={`mt-1 flex justify-center items-center h-48 px-6 pt-5 pb-6 border-2 border-secondary border-dashed rounded-md cursor-pointer transition-colors ${isDragging ? 'border-accent bg-accent/10' : 'hover:border-text-muted'}`}
                     >
                         {preview ? (
                             <img src={preview} alt="Preview" className="max-h-full rounded-md object-contain" />
                         ) : (
                             <div className="space-y-1 text-center">
-                                <svg className="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                <p className="text-sm text-gray-400">Drag 'n' drop or click to upload</p>
+                                <svg className="mx-auto h-12 w-12 text-text-muted" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                                <p className="text-sm text-text-muted">Drag 'n' drop or click to upload</p>
                             </div>
                         )}
                         <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" required/>
@@ -120,17 +121,17 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                 </div>
 
                 <div>
-                    <label htmlFor="license" className="block text-sm font-medium text-gray-300">License</label>
-                    <select id="license" value={license} onChange={(e) => setLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-white">
+                    <label htmlFor="license" className="block text-sm font-medium text-text-muted">License</label>
+                    <select id="license" value={license} onChange={(e) => setLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-secondary border border-white/10 rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-text-main">
                         {LICENSES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                     </select>
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Flags</label>
+                    <label className="block text-sm font-medium text-text-muted">Flags</label>
                     <div className="mt-2 flex flex-wrap gap-2">
                         {FLAGS.map(flag => (
-                            <button key={flag} type="button" onClick={() => handleFlagToggle(flag)} className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedFlags.includes(flag) ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                            <button key={flag} type="button" onClick={() => handleFlagToggle(flag)} className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedFlags.includes(flag) ? 'bg-accent text-white' : 'bg-secondary text-text-muted hover:bg-white/10'}`}>
                                 {flag}
                             </button>
                         ))}
@@ -138,8 +139,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                 </div>
 
                 <div>
-                    <label htmlFor="originalWork" className="block text-sm font-medium text-gray-300">Original Work URL (Optional)</label>
-                    <input type="url" id="originalWork" value={originalWorkUrl} onChange={(e) => setOriginalWorkUrl(e.target.value)} className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-purple-500 focus:border-purple-500" placeholder="https://example.com/source_image"/>
+                    <label htmlFor="originalWork" className="block text-sm font-medium text-text-muted">Original Work URL (Optional)</label>
+                    <input type="url" id="originalWork" value={originalWorkUrl} onChange={(e) => setOriginalWorkUrl(e.target.value)} className="mt-1 block w-full bg-secondary border border-white/10 rounded-md shadow-sm py-2 px-3 text-text-main focus:outline-none focus:ring-accent focus:border-accent" placeholder="https://example.com/source_image"/>
                 </div>
 
                 {error && <p className="text-sm text-red-400">{error}</p>}

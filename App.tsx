@@ -63,7 +63,7 @@ const App: React.FC = () => {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-900 to-purple-900">
+      <div className="flex items-center justify-center h-screen bg-background">
         <Spinner />
       </div>
     );
@@ -74,7 +74,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-gray-900 via-purple-900/60 to-gray-900 bg-[length:200%_200%] animate-bg-pan text-white font-sans">
+    <div className="min-h-screen w-full bg-background text-text-main font-sans">
       <Header user={user} onUploadClick={() => setUploadModalOpen(true)} />
       <main className="container mx-auto px-4 py-8 pt-24">
         {imagesLoading ? (
