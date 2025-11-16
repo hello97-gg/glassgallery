@@ -4,12 +4,15 @@ import type { ImageMeta } from '../types';
 interface ImageCardProps {
   image: ImageMeta;
   onClick: () => void;
+  className?: string;
 }
 
-const ImageCard: React.FC<ImageCardProps> = ({ image, onClick }) => {
+const ImageCard: React.FC<ImageCardProps> = ({ image, onClick, className = '' }) => {
+  const combinedClassName = `group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid ${className}`;
+
   return (
     <div
-      className="group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid"
+      className={combinedClassName}
       onClick={onClick}
     >
       <img

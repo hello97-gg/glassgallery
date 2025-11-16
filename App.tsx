@@ -11,6 +11,7 @@ import ImageGrid from './components/ImageGrid';
 import UploadModal from './components/UploadModal';
 import ImageDetailModal from './components/ImageDetailModal';
 import Spinner from './components/Spinner';
+import ExplorePage from './components/ExplorePage';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -20,6 +21,8 @@ const App: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<ImageMeta | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+  const [activeView, setActiveView] = useState<'home' | 'explore'>('home');
+
 
   useEffect(() => {
     // Fix: Use v8 compat syntax for onAuthStateChanged.
@@ -38,12 +41,7 @@ const App: React.FC = () => {
     setImagesLoading(true);
     try {
       const fetchedImages = await getImagesFromFirestore();
-      // Simple shuffle algorithm
-      for (let i = fetchedImages.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [fetchedImages[i], fetchedImages[j]] = [fetchedImages[j], fetchedImages[i]];
-      }
-      setImages(fetchedImages);
+      setImages(fetchedImages); // Let firestore order by date, no need to shuffle
     } catch (error) {
       console.error("Error fetching images:", error);
     } finally {
@@ -78,7 +76,9 @@ const App: React.FC = () => {
          <Sidebar 
             user={user} 
             onCreateClick={handleCreateClick} 
-            onLoginClick={() => setLoginModalOpen(true)} 
+            onLoginClick={() => setLoginModalOpen(true)}
+            activeView={activeView}
+            setView={setActiveView}
           />
       </div>
       <main className="flex-1 p-6 md:p-8">
@@ -87,7 +87,10 @@ const App: React.FC = () => {
             <Spinner />
           </div>
         ) : (
-          <ImageGrid images={images} onImageClick={handleImageClick} />
+          <>
+            {activeView === 'home' && <ImageGrid images={images} onImageClick={handleImageClick} />}
+            {activeView === 'explore' && <ExplorePage images={images} onImageClick={handleImageClick} />}
+          </>
         )}
       </main>
       
