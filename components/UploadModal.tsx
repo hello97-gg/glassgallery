@@ -5,6 +5,7 @@ import { addImageToFirestore } from '../services/firestoreService';
 import { LICENSES, FLAGS } from '../constants';
 import Button from './Button';
 import Spinner from './Spinner';
+import imageCompression from 'browser-image-compression';
 
 interface UploadModalProps {
   user: User;
@@ -22,15 +23,37 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileSelect = (selectedFile: File) => {
+  const handleFileSelect = async (selectedFile: File) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
-        setFile(selectedFile);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPreview(reader.result as string);
-        };
-        reader.readAsDataURL(selectedFile);
+        setIsLoading(true);
         setError(null);
+        setPreview(null);
+        setFile(null);
+
+        try {
+            const options = {
+                maxSizeMB: 2,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+            };
+            
+            const compressedFile = await imageCompression(selectedFile, options);
+            
+            setFile(compressedFile);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreview(reader.result as string);
+            };
+            reader.readAsDataURL(compressedFile);
+
+        } catch (err) {
+            console.error("Image compression error:", err);
+            setError("Could not process the image. Please try a different one.");
+            setFile(null);
+            setPreview(null);
+        } finally {
+            setIsLoading(false);
+        }
     } else {
         setError("Please select a valid image file.");
     }
@@ -46,7 +69,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    if (!isLoading) {
+        setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -59,9 +84,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    if (isLoading) return;
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileSelect(e.dataTransfer.files[0]);
-      // Manually set the files for the input element to help with state consistency
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
       if (fileInput) {
         fileInput.files = e.dataTransfer.files;
@@ -70,7 +95,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   };
 
   const handleFlagToggle = (flag: string) => {
-    setError(null); // Clear error when user interacts with tags
+    setError(null);
     setSelectedFlags(prev =>
       prev.includes(flag) ? prev.filter(f => f !== flag) : [...prev, flag]
     );
@@ -79,7 +104,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation checks
     if (!file) {
       setError("Please select an image to upload.");
       return;
@@ -122,9 +146,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`mt-1 flex justify-center items-center h-48 px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-md cursor-pointer transition-colors ${isDragging ? 'border-accent bg-accent/10' : 'hover:border-secondary/50'}`}
+                        className={`mt-1 flex justify-center items-center h-48 px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-md transition-colors ${isLoading ? '' : 'cursor-pointer'} ${isDragging ? 'border-accent bg-accent/10' : 'hover:border-secondary/50'}`}
                     >
-                        {preview ? (
+                        {isLoading ? (
+                            <div className="flex flex-col items-center text-center">
+                                <Spinner />
+                                <p className="mt-2 text-sm text-secondary">Processing image...</p>
+                            </div>
+                        ) : preview ? (
                             <img src={preview} alt="Preview" className="max-h-full rounded-md object-contain" />
                         ) : (
                             <div className="space-y-1 text-center">
@@ -132,8 +161,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                                 <p className="text-sm text-secondary">Drag 'n' drop or click to upload</p>
                             </div>
                         )}
-                        {/* Fix: Removed 'required' attribute to prevent browser validation from blocking drag-and-drop submission */}
-                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*"/>
+                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" disabled={isLoading} />
                     </label>
                 </div>
 
