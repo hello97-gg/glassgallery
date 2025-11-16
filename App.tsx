@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
@@ -45,7 +45,7 @@ const App: React.FC = () => {
     setImagesLoading(true);
     try {
       const fetchedImages = await getImagesFromFirestore();
-      setImages(fetchedImages); // Let firestore order by date, no need to shuffle
+      setImages(fetchedImages); // Keep original order for explore page
     } catch (error) {
       console.error("Error fetching images:", error);
     } finally {
@@ -58,6 +58,16 @@ const App: React.FC = () => {
       fetchImages();
     }
   }, [fetchImages, activeView]);
+
+  const shuffledImages = useMemo(() => {
+    // Create a new array to avoid mutating the original `images` state
+    const array = [...images];
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }, [images]);
 
   const handleImageClick = (image: ImageMeta) => {
     setSelectedImage(image);
@@ -123,7 +133,7 @@ const App: React.FC = () => {
         return <ExplorePage images={images} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
     }
 
-    return <ImageGrid images={images} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+    return <ImageGrid images={shuffledImages} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
   }
 
 

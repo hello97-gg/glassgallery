@@ -54,7 +54,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, onImageClick, onViewP
       <div className="animate-fade-in">
         <div className="mb-8 flex items-center gap-4">
            <Button onClick={() => setSelectedFlag(null)} variant="secondary" size="sm" className="!p-2">
-                <svg xmlns="http://www.w.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
             </Button>
@@ -70,8 +70,12 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, onImageClick, onViewP
       <h1 className="text-3xl font-bold mb-6 text-primary">Explore Categories</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
         {sortedFlags.map((flag) => {
-          const representativeImage = imagesByFlag[flag][0];
+          const categoryImages = imagesByFlag[flag];
+          if (!categoryImages || categoryImages.length === 0) return null;
+          
+          const representativeImage = categoryImages[Math.floor(Math.random() * categoryImages.length)];
           if (!representativeImage) return null;
+
           return (
             <CategoryCard 
               key={flag} 
