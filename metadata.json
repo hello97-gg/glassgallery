@@ -1,0 +1,5 @@
+{
+  "name": "Glass Gallery",
+  "description": "An image sharing platform with a modern, glass-like interface. Users can sign in, upload images with specific licenses and flags, and browse a gallery of shared content.",
+  "requestFramePermissions": []
+}
