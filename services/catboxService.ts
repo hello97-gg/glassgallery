@@ -1,40 +1,70 @@
+/**
+ * Converts a File object to a Base64 encoded string.
+ * @param file The file to convert.
+ * @returns A promise that resolves with the Base64 string (without the data URL prefix).
+ */
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      // The result is a data URL like "data:image/jpeg;base64,LzlqLzRBQ...".
+      // We only need the part after the comma.
+      const base64String = result.split(',')[1];
+      if (base64String) {
+        resolve(base64String);
+      } else {
+        reject(new Error("Failed to extract Base64 string from file."));
+      }
+    };
+    reader.onerror = error => reject(error);
+  });
+};
 
-// The original Catbox API URL.
-const CATBOX_API_URL = "https://catbox.moe/user/api.php";
-
-// A CORS proxy is used to bypass browser restrictions on cross-origin requests.
-// The Catbox.moe API does not send the required CORS headers for direct client-side access,
-// so we route the request through a proxy that adds the necessary headers.
-// Note: Public proxies are not recommended for production use.
-const PROXIED_CATBOX_URL = `https://cors-anywhere.herokuapp.com/${CATBOX_API_URL}`;
-
+/**
+ * Uploads a file to Catbox via our own server-side API proxy.
+ * This avoids CORS issues by having the server handle the upload.
+ * @param file The image file to upload.
+ * @returns A promise that resolves with the direct URL to the uploaded file.
+ */
 export const uploadToCatbox = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append('reqtype', 'fileupload');
-  formData.append('userhash', ''); // Anonymous upload
-  formData.append('fileToUpload', file);
-
   try {
-    // We send the request to the proxied URL instead of the direct API URL.
-    const response = await fetch(PROXIED_CATBOX_URL, {
+    // 1. Convert the file to a Base64 string.
+    const base64File = await fileToBase64(file);
+
+    // 2. Send the Base64 string and filename to our local API endpoint.
+    const response = await fetch('/api/uploadToCatbox', {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        file: base64File,
+        name: file.name,
+      }),
     });
 
+    // 3. Handle the response from our API.
     if (!response.ok) {
-      // It's useful to log the response body on error for debugging proxy issues.
-      const errorBody = await response.text();
-      console.error("Proxy or API error response:", errorBody);
-      throw new Error(`Catbox API Error: ${response.status} ${response.statusText}`);
+      const errorData = await response.json();
+      console.error("API proxy error response:", errorData);
+      throw new Error(`Upload failed: ${errorData.error || response.statusText}`);
     }
 
-    const fileUrl = await response.text();
-    if (!fileUrl.startsWith('http')) {
-        throw new Error(`Invalid response from Catbox: ${fileUrl}`);
+    const data = await response.json();
+    const fileUrl = data.url;
+
+    if (!fileUrl || !fileUrl.startsWith('http')) {
+        throw new Error(`Invalid URL received from server: ${fileUrl}`);
     }
+    
+    // 4. Return the final URL from Catbox.
     return fileUrl;
+    
   } catch (error) {
-    console.error("Failed to upload to Catbox:", error);
+    console.error("Failed to upload via API proxy:", error);
+    // Re-throw the error so the UI component can catch it.
     throw error;
   }
 };
