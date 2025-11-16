@@ -15,10 +15,10 @@ interface SidebarProps {
 const NavItem: React.FC<{ children: React.ReactNode, label: string, onClick?: () => void, active?: boolean, isProminent?: boolean }> = ({ children, label, onClick, active, isProminent }) => (
   <button
     onClick={onClick}
-    className={`flex items-center w-full p-3 my-2 rounded-lg transition-all duration-200 group-hover:space-x-4
+    className={`flex items-center w-full p-3 my-3 rounded-lg transition-all duration-200 group-hover:space-x-4
       ${active ? 'bg-surface font-semibold text-primary' : ''}
       ${isProminent ? 'bg-accent text-primary font-semibold hover:bg-accent-hover' : ''}
-      ${!active && !isProminent ? 'text-secondary hover:text-primary hover:bg-surface' : ''}
+      ${!active && !isProminent ? 'text-secondary hover:text-primary hover:bg-surface/80' : ''}
     `}
     aria-label={label}
   >
@@ -44,25 +44,27 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
   return (
     <aside className="h-screen w-20 hover:w-56 transition-all duration-300 group bg-background border-r border-border p-3 flex flex-col sticky top-0">
       {/* Logo */}
-      <div className="flex items-center group-hover:space-x-4 p-3 mb-6">
-         <div className="w-8 h-8 rounded-lg bg-accent flex-shrink-0 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+      <div className="flex items-center group-hover:space-x-3 p-3 mb-8">
+         <div className="w-10 h-10 rounded-lg bg-surface flex-shrink-0 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
         </div>
-        <span className="text-lg font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Gallery</span>
+        <span className="text-xl font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Glass</span>
       </div>
 
       {/* Navigation */}
       <nav className="flex-grow flex flex-col">
         <NavItem label="Home" active={activeView === 'home'} onClick={() => setView('home')}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
         </NavItem>
          <NavItem label="Explore" active={activeView === 'explore'} onClick={() => setView('explore')}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706l-1.51-1.51a8.011 8.011 0 00-1.912 2.706H4.332zM8.027 4.332A6.012 6.012 0 0110 3.754v2.502a3.504 3.504 0 00-1.973.578l-1.67-1.67zM9.973 11.973a3.504 3.504 0 001.406-1.406l2.122 2.122a6.012 6.012 0 01-2.706 1.912v-2.628zM11.973 9.973a3.504 3.504 0 00-.578 1.973l1.67 1.67a6.012 6.012 0 01.578-1.973h-1.67zM15.668 11.973a6.012 6.012 0 01-1.912 2.706l1.51 1.51a8.011 8.011 0 001.912-2.706h-1.51zM11.973 8.027a6.012 6.012 0 01-2.706-1.912l-1.51 1.51a8.011 8.011 0 002.706 1.912V8.027zM8.027 15.668A6.012 6.012 0 0110 16.246v-2.502a3.504 3.504 0 001.973-.578l1.67 1.67zM9.973 3.504a3.504 3.504 0 00-1.406 1.406L6.445 2.788a6.012 6.012 0 012.706-1.912v2.628z" clipRule="evenodd" />
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
           </svg>
         </NavItem>
         <NavItem label="Create" onClick={onCreateClick} isProminent>
