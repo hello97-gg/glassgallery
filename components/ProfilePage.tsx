@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import type { User } from 'firebase/auth';
 import type { ProfileUser, ImageMeta } from '../types';
 import { getImagesByUploader } from '../services/firestoreService';
 import ImageGrid from './ImageGrid';
@@ -7,12 +8,13 @@ import Button from './Button';
 
 interface ProfilePageProps {
   user: ProfileUser;
+  loggedInUser: User | null;
   onBack: () => void;
   onImageClick: (image: ImageMeta) => void;
   onViewProfile: (user: ProfileUser) => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onImageClick, onViewProfile }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, onImageClick, onViewProfile }) => {
   const [images, setImages] = useState<ImageMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,7 +60,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onImageClick, o
           <Spinner />
         </div>
       ) : (
-        <ImageGrid images={images} onImageClick={onImageClick} onViewProfile={onViewProfile} />
+        <ImageGrid user={loggedInUser} images={images} onImageClick={onImageClick} onViewProfile={onViewProfile} />
       )}
     </div>
   );

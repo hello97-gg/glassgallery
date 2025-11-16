@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { getImagesFromFirestore } from './services/firestoreService';
+import { getImagesFromFirestore, deleteImageFromFirestore } from './services/firestoreService';
 import type { ImageMeta, ProfileUser } from './types';
 
 import Sidebar from './components/Header';
@@ -70,6 +70,10 @@ const App: React.FC = () => {
   }, [images]);
 
   const handleImageClick = (image: ImageMeta) => {
+    if (image.isNSFW && !user) {
+        setLoginModalOpen(true);
+        return;
+    }
     setSelectedImage(image);
   };
 
@@ -116,6 +120,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleImageDelete = async (imageId: string) => {
+    try {
+        await deleteImageFromFirestore(imageId);
+        setImages(prevImages => prevImages.filter(img => img.id !== imageId));
+        setSelectedImage(null); // Close the modal
+    } catch (error) {
+        console.error("Failed to delete image:", error);
+        // Here you might want to show an error toast to the user
+    }
+  };
+
   const renderContent = () => {
     if (authLoading || (imagesLoading && activeView !== 'profile')) {
        return (
@@ -126,14 +141,14 @@ const App: React.FC = () => {
     }
     
     if (activeView === 'profile' && profileUser) {
-        return <ProfilePage user={profileUser} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+        return <ProfilePage user={profileUser} loggedInUser={user} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
     }
     
     if (activeView === 'explore') {
-        return <ExplorePage images={images} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+        return <ExplorePage images={images} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
     }
 
-    return <ImageGrid images={shuffledImages} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+    return <ImageGrid images={shuffledImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
   }
 
 
@@ -170,6 +185,7 @@ const App: React.FC = () => {
           onClose={() => setSelectedImage(null)}
           onViewProfile={handleViewProfile}
           onImageUpdate={handleImageUpdate}
+          onImageDelete={handleImageDelete}
         />
       )}
     </div>

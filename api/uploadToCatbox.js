@@ -1,5 +1,6 @@
 // This is a serverless function that acts as a proxy to the Catbox API.
 // It's designed to run in an environment like Vercel or Netlify.
+import { GoogleGenAI } from "@google/genai";
 import fetch from "node-fetch";
 import FormData from "form-data";
 import sharp from "sharp";
@@ -46,32 +47,53 @@ export default async function handler(req, res) {
     }
     // --- End Compression Logic ---
 
+    // --- NSFW Detection with Gemini ---
+    let isNSFW = false;
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: buffer.toString('base64') } },
+                { text: "Does this image contain Not Safe For Work (NSFW) content, such as nudity, graphic violence, or other adult themes? Answer with only 'yes' or 'no'." }
+            ]},
+        });
+        const geminiResult = response.text.trim().toLowerCase();
+        isNSFW = geminiResult.includes('yes');
+        console.log(`Gemini NSFW check for ${name}: ${isNSFW}`);
+    } catch(err) {
+        console.error("Gemini API error:", err);
+        // Fail safe: if Gemini fails, assume it's not NSFW to avoid blocking uploads.
+        isNSFW = false;
+    }
+    // --- End NSFW Detection ---
+
     const formData = new FormData();
     formData.append("reqtype", "fileupload");
     formData.append("fileToUpload", buffer, name);
 
-    const response = await fetch("https://catbox.moe/user/api.php", {
+    const catboxResponse = await fetch("https://catbox.moe/user/api.php", {
       method: "POST",
       body: formData,
     });
 
-    if (!response.ok) {
-        const errorText = await response.text();
+    if (!catboxResponse.ok) {
+        const errorText = await catboxResponse.text();
         console.error("Catbox API Error:", errorText);
         // The error "Request Entity Too Large" from Catbox is plain text, not JSON
-        if (response.status === 413) {
+        if (catboxResponse.status === 413) {
              throw new Error(`Catbox rejected the file: Request Entity Too Large. Compressed size: ${buffer.length} bytes.`);
         }
-        throw new Error(`Catbox API responded with status ${response.status}: ${errorText}`);
+        throw new Error(`Catbox API responded with status ${catboxResponse.status}: ${errorText}`);
     }
 
-    const fileUrl = await response.text();
+    const fileUrl = await catboxResponse.text();
 
     if (!fileUrl.startsWith('http')) {
         throw new Error(`Received an invalid response from Catbox: ${fileUrl}`);
     }
 
-    res.status(200).json({ url: fileUrl });
+    res.status(200).json({ url: fileUrl, isNSFW });
 
   } catch (err) {
     console.error("Error in /api/uploadToCatbox:", err);

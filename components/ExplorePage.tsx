@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
+import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
 import ImageGrid from './ImageGrid';
 import Button from './Button';
 
 interface ExplorePageProps {
   images: ImageMeta[];
+  user: User | null;
   onImageClick: (image: ImageMeta) => void;
   onViewProfile: (user: ProfileUser) => void;
 }
@@ -20,7 +22,7 @@ const CategoryCard: React.FC<{ flag: string, image: ImageMeta, onClick: () => vo
   );
 };
 
-const ExplorePage: React.FC<ExplorePageProps> = ({ images, onImageClick, onViewProfile }) => {
+const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, onViewProfile }) => {
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null);
 
   const imagesByFlag = useMemo(() => {
@@ -60,7 +62,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, onImageClick, onViewP
             </Button>
             <h1 className="text-3xl font-bold text-primary">{selectedFlag}</h1>
         </div>
-        <ImageGrid images={imagesByFlag[selectedFlag]} onImageClick={onImageClick} onViewProfile={onViewProfile} />
+        <ImageGrid images={imagesByFlag[selectedFlag]} user={user} onImageClick={onImageClick} onViewProfile={onViewProfile} />
       </div>
     );
   }

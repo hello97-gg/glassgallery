@@ -20,12 +20,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
   const [originalWorkUrl, setOriginalWorkUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Processing image...');
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFileSelect = async (selectedFile: File) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
         setIsLoading(true);
+        setLoadingMessage('Compressing image...');
         setError(null);
         setPreview(null);
         setFile(null);
@@ -116,10 +118,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
 
     setIsLoading(true);
+    setLoadingMessage('Uploading & analyzing...');
     setError(null);
     try {
-      const imageUrl = await uploadToCatbox(file);
-      await addImageToFirestore(user, imageUrl, license, selectedFlags, originalWorkUrl);
+      const { url: imageUrl, isNSFW } = await uploadToCatbox(file);
+      await addImageToFirestore(user, imageUrl, license, selectedFlags, isNSFW, originalWorkUrl);
       onUploadSuccess();
     } catch (err) {
       setError('Upload failed. Please try again.');
@@ -151,7 +154,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                         {isLoading ? (
                             <div className="flex flex-col items-center text-center">
                                 <Spinner />
-                                <p className="mt-2 text-sm text-secondary">Processing image...</p>
+                                <p className="mt-2 text-sm text-secondary">{loadingMessage}</p>
                             </div>
                         ) : preview ? (
                             <img src={preview} alt="Preview" className="max-h-full rounded-md object-contain" />

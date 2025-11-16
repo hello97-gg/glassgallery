@@ -1,14 +1,16 @@
 import React from 'react';
+import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
 import ImageCard from './ImageCard';
 
 interface ImageGridProps {
   images: ImageMeta[];
+  user: User | null;
   onImageClick: (image: ImageMeta) => void;
   onViewProfile: (user: ProfileUser) => void;
 }
 
-const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageClick, onViewProfile }) => {
+const ImageGrid: React.FC<ImageGridProps> = ({ images, user, onImageClick, onViewProfile }) => {
   if (images.length === 0) {
     return (
       <div className="text-center py-16">
@@ -26,7 +28,8 @@ const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageClick, onViewProfi
       {images.map((image) => (
         <ImageCard 
             key={image.id} 
-            image={image} 
+            image={image}
+            user={user}
             onClick={() => onImageClick(image)} 
             onViewProfile={onViewProfile}
         />

@@ -12,6 +12,7 @@ interface ImageDetailModalProps {
   onClose: () => void;
   onViewProfile: (user: ProfileUser) => void;
   onImageUpdate: (updatedImage: ImageMeta) => void;
+  onImageDelete: (imageId: string) => void;
 }
 
 const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -20,11 +21,12 @@ const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     </span>
 );
 
-const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClose, onViewProfile, onImageUpdate }) => {
+const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClose, onViewProfile, onImageUpdate, onImageDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedLicense, setEditedLicense] = useState(image.license);
   const [editedFlags, setEditedFlags] = useState<string[]>(image.flags || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isOwner = user?.uid === image.uploaderUid;
@@ -74,6 +76,14 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     } finally {
       setIsSaving(false);
     }
+  };
+  
+  const handleDelete = async () => {
+      if (window.confirm("Are you sure you want to permanently delete this image? This action cannot be undone.")) {
+          setIsDeleting(true);
+          onImageDelete(image.id);
+          // The parent component will handle closing the modal after deletion.
+      }
   };
 
   const renderDetails = () => {
@@ -137,6 +147,14 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
           </button>
           
           <div className="flex-grow space-y-4">
+             {image.isNSFW && (
+                <div className="p-3 rounded-lg bg-yellow-500/10 text-yellow-300 text-sm flex items-start gap-3">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.22 3.006-1.742 3.006H4.42c-1.522 0-2.492-1.672-1.742-3.006l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span>This content is flagged as potentially sensitive.</span>
+                </div>
+            )}
             {renderDetails()}
             {image.originalWorkUrl && (
               <div>
@@ -149,15 +167,26 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
           </div>
           
           {isOwner && (
-            <div className="mt-auto pt-4 border-t border-border flex justify-end gap-3">
-              <Button onClick={handleEditToggle} variant="secondary">
-                {isEditing ? 'Cancel' : 'Edit'}
-              </Button>
-              {isEditing && (
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? <Spinner/> : 'Save'}
-                </Button>
-              )}
+            <div className="mt-auto pt-4 border-t border-border flex justify-end items-center gap-3">
+                {isEditing ? (
+                    <>
+                        <Button onClick={handleEditToggle} variant="secondary" disabled={isSaving}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSave} disabled={isSaving}>
+                          {isSaving ? <Spinner/> : 'Save'}
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                         <Button onClick={handleDelete} variant="secondary" className="!bg-red-900/50 !text-red-400 hover:!bg-red-800/50" disabled={isDeleting}>
+                            {isDeleting ? <Spinner/> : 'Delete'}
+                        </Button>
+                        <Button onClick={handleEditToggle} variant="secondary">
+                            Edit
+                        </Button>
+                    </>
+                )}
             </div>
           )}
         </div>

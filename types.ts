@@ -10,6 +10,7 @@ export interface ImageMeta {
   uploaderPhotoURL: string;
   license: string;
   flags: string[];
+  isNSFW: boolean;
   originalWorkUrl?: string;
   uploadedAt: firebase.firestore.Timestamp;
 }

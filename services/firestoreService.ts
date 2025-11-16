@@ -1,5 +1,6 @@
 
 
+
 import { db } from './firebase';
 // Fix: Use Firebase v8 compatibility imports.
 import firebase from 'firebase/compat/app';
@@ -13,6 +14,7 @@ export const addImageToFirestore = async (
     imageUrl: string, 
     license: string, 
     flags: string[], 
+    isNSFW: boolean,
     originalWorkUrl?: string
     ) => {
     try {
@@ -24,6 +26,7 @@ export const addImageToFirestore = async (
             uploaderPhotoURL: user.photoURL || '',
             license,
             flags,
+            isNSFW,
             originalWorkUrl: originalWorkUrl || '',
             // Fix: Use v8 compat syntax for serverTimestamp.
             uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -72,6 +75,16 @@ export const updateImageDetails = async (imageId: string, updates: { license: st
         await imageRef.update(updates);
     } catch (error) {
         console.error("Error updating document: ", error);
+        throw error;
+    }
+};
+
+export const deleteImageFromFirestore = async (imageId: string) => {
+    try {
+        const imageRef = db.collection("images").doc(imageId);
+        await imageRef.delete();
+    } catch (error) {
+        console.error("Error deleting document: ", error);
         throw error;
     }
 };
