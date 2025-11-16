@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
 import { logOut } from '../services/firebase';
+import { ProfileUser } from '../types';
 
 interface SidebarProps {
   user: User | null;
   onCreateClick: () => void;
   onLoginClick: () => void;
-  activeView: 'home' | 'explore';
+  activeView: 'home' | 'explore' | 'profile';
   setView: (view: 'home' | 'explore') => void;
+  onViewProfile: (user: ProfileUser) => void;
 }
 
 const NavItem: React.FC<{ children: React.ReactNode, label: string, onClick?: () => void, active?: boolean, isProminent?: boolean }> = ({ children, label, onClick, active, isProminent }) => (
@@ -25,8 +27,19 @@ const NavItem: React.FC<{ children: React.ReactNode, label: string, onClick?: ()
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, activeView, setView }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, activeView, setView, onViewProfile }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const handleMyProfileClick = () => {
+    if (user) {
+        onViewProfile({
+            uploaderUid: user.uid,
+            uploaderName: user.displayName || 'User',
+            uploaderPhotoURL: user.photoURL || ''
+        });
+        setDropdownOpen(false);
+    }
+  }
 
   return (
     <aside className="h-screen w-20 hover:w-56 transition-all duration-300 group bg-background border-r border-border p-3 flex flex-col sticky top-0">
@@ -71,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
               />
               <div className="text-left opacity-0 group-hover:opacity-100 transition-opacity duration-200 group-hover:ml-3 overflow-hidden">
                 <p className="text-sm font-semibold text-primary truncate whitespace-nowrap">{user.displayName || 'User'}</p>
-                <p className="text-xs text-secondary truncate whitespace-nowrap">View Profile</p>
+                <p className="text-xs text-secondary truncate whitespace-nowrap">Options</p>
               </div>
             </button>
             {dropdownOpen && (
@@ -80,17 +93,21 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
                   Signed in as<br />
                   <span className="font-semibold text-sm text-primary">{user.displayName || user.email}</span>
                 </div>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
+                <button
+                  onClick={handleMyProfileClick}
+                  className="block w-full text-left px-4 py-2 text-sm text-primary hover:bg-border"
+                >
+                  My Profile
+                </button>
+                <button
+                  onClick={() => {
                     logOut();
                     setDropdownOpen(false);
                   }}
                   className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/20"
                 >
                   Sign Out
-                </a>
+                </button>
               </div>
             )}
           </div>

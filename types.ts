@@ -18,3 +18,9 @@ export interface License {
   value: string;
   label: string;
 }
+
+export interface ProfileUser {
+  uploaderUid: string;
+  uploaderName: string;
+  uploaderPhotoURL: string;
+}

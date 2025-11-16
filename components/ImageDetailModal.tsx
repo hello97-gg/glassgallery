@@ -1,9 +1,10 @@
 import React from 'react';
-import type { ImageMeta } from '../types';
+import type { ImageMeta, ProfileUser } from '../types';
 
 interface ImageDetailModalProps {
   image: ImageMeta;
   onClose: () => void;
+  onViewProfile: (user: ProfileUser) => void;
 }
 
 const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -12,7 +13,16 @@ const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     </span>
 );
 
-const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, onClose }) => {
+const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, onClose, onViewProfile }) => {
+  
+  const handleProfileClick = () => {
+    onViewProfile({
+      uploaderUid: image.uploaderUid,
+      uploaderName: image.uploaderName,
+      uploaderPhotoURL: image.uploaderPhotoURL,
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -21,13 +31,14 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, onClose }) =
         </div>
         <div className="md:w-1/3 p-6 space-y-4 overflow-y-auto text-primary relative">
           <button onClick={onClose} className="absolute top-4 right-4 text-3xl font-light text-secondary hover:text-primary">&times;</button>
-          <div className="flex items-center gap-3 border-b border-border pb-4">
+          
+          <button onClick={handleProfileClick} className="w-full text-left flex items-center gap-3 border-b border-border pb-4 hover:bg-border/50 p-2 -m-2 rounded-lg transition-colors">
             <img src={image.uploaderPhotoURL || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${image.uploaderUid}`} alt={image.uploaderName} className="w-12 h-12 rounded-full" />
             <div>
               <p className="font-semibold">{image.uploaderName}</p>
               <p className="text-xs text-secondary">Uploaded on {new Date(image.uploadedAt?.toDate()).toLocaleDateString()}</p>
             </div>
-          </div>
+          </button>
           
           <div>
             <h4 className="font-semibold mb-2 text-secondary text-sm">License</h4>

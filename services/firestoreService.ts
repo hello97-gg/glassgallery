@@ -48,3 +48,19 @@ export const getImagesFromFirestore = async (): Promise<ImageMeta[]> => {
         throw error;
     }
 };
+
+export const getImagesByUploader = async (uploaderUid: string): Promise<ImageMeta[]> => {
+    try {
+      const q = db.collection("images")
+        .where("uploaderUid", "==", uploaderUid)
+        .orderBy("uploadedAt", "desc");
+      const querySnapshot = await q.get();
+      return querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+      })) as ImageMeta[];
+    } catch (error) {
+      console.error("Error getting user documents: ", error);
+      throw error;
+    }
+  };

@@ -1,13 +1,14 @@
 import React from 'react';
-import type { ImageMeta } from '../types';
+import type { ImageMeta, ProfileUser } from '../types';
 import ImageCard from './ImageCard';
 
 interface ExplorePageProps {
   images: ImageMeta[];
   onImageClick: (image: ImageMeta) => void;
+  onViewProfile: (user: ProfileUser) => void;
 }
 
-const ExplorePage: React.FC<ExplorePageProps> = ({ images, onImageClick }) => {
+const ExplorePage: React.FC<ExplorePageProps> = ({ images, onImageClick, onViewProfile }) => {
   const imagesByFlag = images.reduce((acc, image) => {
     // Ensure flags is an array before iterating
     if (Array.isArray(image.flags)) {
@@ -41,7 +42,12 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, onImageClick }) => {
             {imagesByFlag[flag].map((image) => (
               <div key={image.id} className="flex-shrink-0 w-48 md:w-56 lg:w-64">
                 {/* We remove the bottom margin from ImageCard's wrapper to avoid double spacing */}
-                <ImageCard image={image} onClick={() => onImageClick(image)} className="mb-0" />
+                <ImageCard 
+                    image={image} 
+                    onClick={() => onImageClick(image)} 
+                    onViewProfile={onViewProfile}
+                    className="mb-0" 
+                />
               </div>
             ))}
           </div>

@@ -1,13 +1,14 @@
 import React from 'react';
-import type { ImageMeta } from '../types';
+import type { ImageMeta, ProfileUser } from '../types';
 import ImageCard from './ImageCard';
 
 interface ImageGridProps {
   images: ImageMeta[];
   onImageClick: (image: ImageMeta) => void;
+  onViewProfile: (user: ProfileUser) => void;
 }
 
-const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageClick }) => {
+const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageClick, onViewProfile }) => {
   if (images.length === 0) {
     return (
       <div className="text-center py-16">
@@ -23,7 +24,12 @@ const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageClick }) => {
   return (
     <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-6">
       {images.map((image) => (
-        <ImageCard key={image.id} image={image} onClick={() => onImageClick(image)} />
+        <ImageCard 
+            key={image.id} 
+            image={image} 
+            onClick={() => onImageClick(image)} 
+            onViewProfile={onViewProfile}
+        />
       ))}
     </div>
   );

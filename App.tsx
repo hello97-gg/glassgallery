@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
 import { getImagesFromFirestore } from './services/firestoreService';
-import type { ImageMeta } from './types';
+import type { ImageMeta, ProfileUser } from './types';
 
 import Sidebar from './components/Header';
 import LoginModal from './components/LoginScreen';
@@ -12,6 +12,7 @@ import UploadModal from './components/UploadModal';
 import ImageDetailModal from './components/ImageDetailModal';
 import Spinner from './components/Spinner';
 import ExplorePage from './components/ExplorePage';
+import ProfilePage from './components/ProfilePage';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -21,7 +22,10 @@ const App: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<ImageMeta | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'home' | 'explore'>('home');
+  
+  const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile'>('home');
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [lastView, setLastView] = useState<'home' | 'explore'>('home');
 
 
   useEffect(() => {
@@ -50,8 +54,10 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchImages();
-  }, [fetchImages]);
+    if (activeView !== 'profile') {
+      fetchImages();
+    }
+  }, [fetchImages, activeView]);
 
   const handleImageClick = (image: ImageMeta) => {
     setSelectedImage(image);
@@ -59,6 +65,10 @@ const App: React.FC = () => {
 
   const handleUploadSuccess = () => {
     setUploadModalOpen(false);
+    // If on profile page, stay there, otherwise go home to see new image
+    if (activeView !== 'profile') {
+        setActiveView('home');
+    }
     fetchImages();
   };
 
@@ -70,6 +80,46 @@ const App: React.FC = () => {
     }
   };
 
+  const handleViewProfile = (userToView: ProfileUser) => {
+    if (activeView === 'home' || activeView === 'explore') {
+        setLastView(activeView);
+    }
+    setProfileUser(userToView);
+    setActiveView('profile');
+    setSelectedImage(null); // Close detail modal if open
+  };
+
+  const handleBack = () => {
+    setActiveView(lastView);
+    setProfileUser(null);
+  }
+  
+  const handleSetView = (view: 'home' | 'explore') => {
+    setActiveView(view);
+    setProfileUser(null); // Clear profile when navigating away
+  }
+
+  const renderContent = () => {
+    if (authLoading || (imagesLoading && activeView !== 'profile')) {
+       return (
+          <div className="flex justify-center items-center h-full">
+            <Spinner />
+          </div>
+       );
+    }
+    
+    if (activeView === 'profile' && profileUser) {
+        return <ProfilePage user={profileUser} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+    }
+    
+    if (activeView === 'explore') {
+        return <ExplorePage images={images} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+    }
+
+    return <ImageGrid images={images} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+  }
+
+
   return (
     <div className="flex min-h-screen w-full bg-background text-primary font-sans">
       <div className="flex-shrink-0">
@@ -78,20 +128,12 @@ const App: React.FC = () => {
             onCreateClick={handleCreateClick} 
             onLoginClick={() => setLoginModalOpen(true)}
             activeView={activeView}
-            setView={setActiveView}
+            setView={handleSetView}
+            onViewProfile={handleViewProfile}
           />
       </div>
       <main className="flex-1 p-6 md:p-8">
-        {authLoading || imagesLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <Spinner />
-          </div>
-        ) : (
-          <>
-            {activeView === 'home' && <ImageGrid images={images} onImageClick={handleImageClick} />}
-            {activeView === 'explore' && <ExplorePage images={images} onImageClick={handleImageClick} />}
-          </>
-        )}
+        {renderContent()}
       </main>
       
       {isUploadModalOpen && user && (
@@ -108,6 +150,7 @@ const App: React.FC = () => {
         <ImageDetailModal
           image={selectedImage}
           onClose={() => setSelectedImage(null)}
+          onViewProfile={handleViewProfile}
         />
       )}
     </div>
