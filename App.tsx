@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
@@ -6,8 +5,8 @@ import { auth } from './services/firebase';
 import { getImagesFromFirestore } from './services/firestoreService';
 import type { ImageMeta } from './types';
 
-import LoginScreen from './components/LoginScreen';
-import Header from './components/Header';
+import Sidebar from './components/Header';
+import LoginModal from './components/LoginScreen';
 import ImageGrid from './components/ImageGrid';
 import UploadModal from './components/UploadModal';
 import ImageDetailModal from './components/ImageDetailModal';
@@ -17,21 +16,25 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [images, setImages] = useState<ImageMeta[]>([]);
-  const [imagesLoading, setImagesLoading] = useState(false);
+  const [imagesLoading, setImagesLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<ImageMeta | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
+  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
 
   useEffect(() => {
     // Fix: Use v8 compat syntax for onAuthStateChanged.
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
+      // Close login modal if user signs in successfully
+      if (currentUser) {
+        setLoginModalOpen(false);
+      }
     });
     return () => unsubscribe();
   }, []);
 
   const fetchImages = useCallback(async () => {
-    if (!user) return;
     setImagesLoading(true);
     try {
       const fetchedImages = await getImagesFromFirestore();
@@ -46,7 +49,7 @@ const App: React.FC = () => {
     } finally {
       setImagesLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     fetchImages();
@@ -61,24 +64,24 @@ const App: React.FC = () => {
     fetchImages();
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginScreen />;
-  }
+  const handleCreateClick = () => {
+    if (user) {
+      setUploadModalOpen(true);
+    } else {
+      setLoginModalOpen(true);
+    }
+  };
 
   return (
-    <div className="min-h-screen w-full bg-background text-text-main font-sans">
-      <Header user={user} onUploadClick={() => setUploadModalOpen(true)} />
-      <main className="container mx-auto px-4 py-8 pt-24">
-        {imagesLoading ? (
-          <div className="flex justify-center items-center h-64">
+    <div className="flex min-h-screen w-full bg-background text-primary font-sans">
+      <Sidebar 
+        user={user} 
+        onCreateClick={handleCreateClick} 
+        onLoginClick={() => setLoginModalOpen(true)} 
+      />
+      <main className="flex-1 pl-24 pr-8 py-8">
+        {authLoading || imagesLoading ? (
+          <div className="flex justify-center items-center h-full">
             <Spinner />
           </div>
         ) : (
@@ -86,13 +89,15 @@ const App: React.FC = () => {
         )}
       </main>
       
-      {isUploadModalOpen && (
+      {isUploadModalOpen && user && (
         <UploadModal
           user={user}
           onClose={() => setUploadModalOpen(false)}
           onUploadSuccess={handleUploadSuccess}
         />
       )}
+
+      {isLoginModalOpen && <LoginModal onClose={() => setLoginModalOpen(false)} />}
 
       {selectedImage && (
         <ImageDetailModal

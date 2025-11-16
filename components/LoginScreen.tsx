@@ -1,7 +1,10 @@
-
 import React from 'react';
 import { signInWithGoogle, signInWithApple } from '../services/firebase';
 import Button from './Button';
+
+interface LoginModalProps {
+    onClose: () => void;
+}
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-3" viewBox="0 0 48 48">
@@ -14,46 +17,39 @@ const AppleIcon = () => (
     </svg>
 );
 
-
-const LoginScreen: React.FC = () => {
-    const handleGoogleLogin = async () => {
+const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
+    const handleLogin = async (loginProvider: () => Promise<any>) => {
         try {
-            await signInWithGoogle();
+            await loginProvider();
+            // The onAuthStateChanged listener in App.tsx will handle closing the modal.
         } catch (error) {
-            console.error("Google Sign-In Error", error);
-        }
-    };
-
-    const handleAppleLogin = async () => {
-        try {
-            await signInWithApple();
-        } catch (error) {
-            console.error("Apple Sign-In Error", error);
+            console.error("Sign-In Error", error);
         }
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-text-main p-4">
-            <div className="w-full max-w-sm text-center">
-                <div className="p-8 space-y-8 bg-surface rounded-2xl shadow-lg">
-                    <h1 className="text-5xl font-bold tracking-tighter text-text-main">
-                        Glass Gallery
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+            <div className="w-full max-w-sm text-center bg-surface rounded-2xl shadow-lg p-8 space-y-8" onClick={(e) => e.stopPropagation()}>
+                <div className="relative">
+                    <button onClick={onClose} className="absolute -top-4 -right-4 text-secondary hover:text-primary transition-colors text-3xl leading-none">&times;</button>
+                    <h1 className="text-4xl font-bold tracking-tighter text-primary">
+                        Welcome!
                     </h1>
-                    <p className="text-lg text-text-muted">
-                        Sign in to upload and share your images.
+                    <p className="text-lg text-secondary mt-2">
+                        Sign in to create and share your images.
                     </p>
-                    <div className="space-y-4 pt-4">
-                        <Button onClick={handleGoogleLogin} fullWidth>
-                            <GoogleIcon /> Sign in with Google
-                        </Button>
-                        <Button onClick={handleAppleLogin} fullWidth variant="secondary">
-                            <AppleIcon /> Sign in with Apple
-                        </Button>
-                    </div>
+                </div>
+                <div className="space-y-4 pt-4">
+                    <Button onClick={() => handleLogin(signInWithGoogle)} fullWidth>
+                        <GoogleIcon /> Sign in with Google
+                    </Button>
+                    <Button onClick={() => handleLogin(signInWithApple)} fullWidth variant="secondary">
+                        <AppleIcon /> Sign in with Apple
+                    </Button>
                 </div>
             </div>
         </div>
     );
 };
 
-export default LoginScreen;
+export default LoginModal;
