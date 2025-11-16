@@ -3,6 +3,7 @@
 import fetch from "node-fetch";
 import FormData from "form-data";
 import sharp from "sharp";
+import { JigsawStack } from "jigsawstack";
 
 // Increase the body parser limit to handle larger base64 image uploads.
 export const config = {
@@ -12,6 +13,30 @@ export const config = {
     },
   },
 };
+
+// Helper function to determine if the moderation result is NSFW
+const isModerationResultNSFW = (moderation) => {
+  if (!moderation) return false;
+
+  const nsfwCategories = moderation.nsfw || {};
+  const goreCategories = moderation.gore || {};
+  const nsfwFlags = ['POSSIBLE', 'LIKELY', 'VERY_LIKELY'];
+
+  for (const key in nsfwCategories) {
+    if (nsfwFlags.includes(nsfwCategories[key])) {
+      console.log(`NSFW flag triggered by: ${key} = ${nsfwCategories[key]}`);
+      return true;
+    }
+  }
+  for (const key in goreCategories) {
+    if (nsfwFlags.includes(goreCategories[key])) {
+      console.log(`NSFW flag triggered by: ${key} = ${goreCategories[key]}`);
+      return true;
+    }
+  }
+  return false;
+};
+
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -25,6 +50,26 @@ export default async function handler(req, res) {
     if (!file || !name) {
       return res.status(400).json({ error: "Missing 'file' or 'name' in request body." });
     }
+    
+    // --- NSFW Moderation with JigsawStack ---
+    let isNSFW = false;
+    try {
+        if (!process.env.JIGSAWSTACK_API_KEY) {
+            console.warn("JIGSAWSTACK_API_KEY environment variable not found. Skipping NSFW check.");
+        } else {
+            const jigsaw = new JigsawStack({ apiKey: process.env.JIGSAWSTACK_API_KEY });
+            const moderationResponse = await jigsaw.image.moderate({ image: file });
+            if (moderationResponse.success) {
+                isNSFW = isModerationResultNSFW(moderationResponse.moderation);
+            } else {
+                console.warn("JigsawStack moderation failed, proceeding without NSFW flag.", moderationResponse);
+            }
+        }
+    } catch (moderationError) {
+        console.error("Error during JigsawStack moderation:", moderationError);
+        // Don't block upload if moderation fails, just proceed without the flag
+    }
+    // --- End NSFW Moderation ---
 
     let buffer = Buffer.from(file, "base64");
     
@@ -71,7 +116,7 @@ export default async function handler(req, res) {
         throw new Error(`Received an invalid response from Catbox: ${fileUrl}`);
     }
 
-    res.status(200).json({ url: fileUrl });
+    res.status(200).json({ url: fileUrl, isNSFW: isNSFW });
 
   } catch (err) {
     console.error("Error in /api/uploadToCatbox:", err);

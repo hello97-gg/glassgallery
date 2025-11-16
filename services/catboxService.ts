@@ -24,11 +24,11 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 /**
  * Uploads a file to Catbox via our own server-side API proxy.
- * This avoids CORS issues and allows for server-side processing like compression.
+ * This avoids CORS issues and allows for server-side processing like compression and NSFW detection.
  * @param file The image file to upload.
- * @returns A promise that resolves with an object containing the direct URL.
+ * @returns A promise that resolves with an object containing the direct URL and NSFW status.
  */
-export const uploadToCatbox = async (file: File): Promise<{ url: string; }> => {
+export const uploadToCatbox = async (file: File): Promise<{ url: string; isNSFW: boolean; }> => {
   try {
     // 1. Convert the file to a Base64 string.
     const base64File = await fileToBase64(file);
@@ -59,7 +59,7 @@ export const uploadToCatbox = async (file: File): Promise<{ url: string; }> => {
     }
     
     // 4. Return the final data object from our proxy.
-    return { url: data.url };
+    return data;
     
   } catch (error) {
     console.error("Failed to upload via API proxy:", error);

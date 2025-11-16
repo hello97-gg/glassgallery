@@ -16,9 +16,7 @@
     "form-data": "^4.0.4",
     "sharp": "^0.34.5",
     "browser-image-compression": "^2.0.2",
-    "nsfwjs": "^4.1.0",
-    "@tensorflow/tfjs": "^4.20.0",
-    "@tensorflow/tfjs-backend-wasm": "^4.20.0"
+    "jigsawstack": "^0.3.7"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
