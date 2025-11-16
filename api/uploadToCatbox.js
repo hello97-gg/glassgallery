@@ -52,38 +52,55 @@ export default async function handler(req, res) {
     try {
         console.log(`Starting Gemini NSFW check for ${name}...`);
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        
+        const prompt = `
+          You are an expert content moderation AI. Analyze the provided image for Not Safe For Work (NSFW) content.
+          Your response must be a JSON object with a single key: "is_nsfw" (boolean).
+
+          Consider the following categories as NSFW and set "is_nsfw" to true:
+          - Explicit nudity, sexually explicit acts, or overly suggestive content.
+          - Graphic violence, severe injury, gore, or bloodshed.
+          - Hateful symbols or harassment.
+
+          If the image is safe for a general audience (SFW), set "is_nsfw" to false.
+          Respond ONLY with the JSON object.
+        `;
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: { parts: [
-                { inlineData: { mimeType: 'image/jpeg', data: buffer.toString('base64') } },
-                { text: "Analyze the image for Not Safe For Work (NSFW) content. Categories to consider include explicit nudity, graphic violence, gore, and sexually suggestive themes. If the image contains content from any of these categories, respond with the single word 'yes'. Otherwise, respond with the single word 'no'." }
-            ]},
+            contents: { 
+                parts: [
+                    { inlineData: { mimeType: 'image/jpeg', data: buffer.toString('base64') } },
+                    { text: prompt }
+                ]
+            },
             safetySettings: [
-                {
-                    category: 'HARM_CATEGORY_HARASSMENT',
-                    threshold: 'BLOCK_NONE',
-                },
-                {
-                    category: 'HARM_CATEGORY_HATE_SPEECH',
-                    threshold: 'BLOCK_NONE',
-                },
-                {
-                    category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                    threshold: 'BLOCK_NONE',
-                },
-                {
-                    category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                    threshold: 'BLOCK_NONE',
-                },
+                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
             ],
             config: {
-                systemInstruction: "You are an expert content moderation AI. Your task is to accurately classify images based on their content. Respond only with 'yes' or 'no' as instructed.",
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: 'OBJECT',
+                    properties: {
+                        is_nsfw: {
+                            type: 'BOOLEAN',
+                            description: 'True if the image contains NSFW content, false otherwise.'
+                        }
+                    },
+                    required: ['is_nsfw']
+                },
             },
         });
-        const geminiResult = response.text.trim().toLowerCase();
-        console.log(`Gemini raw response for ${name}: "${geminiResult}"`);
-        isNSFW = geminiResult.includes('yes');
+
+        const geminiResultJsonString = response.text.trim();
+        console.log(`Gemini raw JSON response for ${name}: ${geminiResultJsonString}`);
+        const geminiResult = JSON.parse(geminiResultJsonString);
+        isNSFW = geminiResult.is_nsfw;
         console.log(`Gemini NSFW check for ${name} completed. Result isNSFW: ${isNSFW}`);
+
     } catch(err) {
         console.error("Gemini API error during NSFW check:", err);
         // Fail safe: if Gemini fails, assume it's not NSFW to avoid blocking uploads.
