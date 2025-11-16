@@ -55,8 +55,11 @@ export default async function handler(req, res) {
             model: 'gemini-2.5-flash',
             contents: { parts: [
                 { inlineData: { mimeType: 'image/jpeg', data: buffer.toString('base64') } },
-                { text: "Does this image contain Not Safe For Work (NSFW) content, such as nudity, graphic violence, or other adult themes? Answer with only 'yes' or 'no'." }
+                { text: "Analyze the image for Not Safe For Work (NSFW) content. Categories to consider include explicit nudity, graphic violence, gore, and sexually suggestive themes. If the image contains content from any of these categories, respond with the single word 'yes'. Otherwise, respond with the single word 'no'." }
             ]},
+            config: {
+                systemInstruction: "You are an expert content moderation AI. Your task is to accurately classify images based on their content. Respond only with 'yes' or 'no' as instructed.",
+            },
         });
         const geminiResult = response.text.trim().toLowerCase();
         isNSFW = geminiResult.includes('yes');
