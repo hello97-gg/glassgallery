@@ -149,13 +149,16 @@ const App: React.FC = () => {
     }
     
     // Optimistic update
-    const hasLiked = image.likedBy?.includes(user.uid);
+    const oldLikedBy = image.likedBy || [];
+    const hasLiked = oldLikedBy.includes(user.uid);
+    const newLikedBy = hasLiked
+        ? oldLikedBy.filter(id => id !== user.uid)
+        : [...oldLikedBy, user.uid];
+
     const updatedImage = {
         ...image,
-        likeCount: (image.likeCount || 0) + (hasLiked ? -1 : 1),
-        likedBy: hasLiked
-            ? image.likedBy?.filter(id => id !== user.uid)
-            : [...(image.likedBy || []), user.uid],
+        likedBy: newLikedBy,
+        likeCount: newLikedBy.length,
     };
     handleImageUpdate(updatedImage);
 
