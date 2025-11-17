@@ -24,7 +24,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({ images, user, onImageClick, onVie
   }
 
   return (
-    <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 md:gap-6">
+    <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-2 md:gap-4">
       {images.map((image) => (
         <ImageCard 
             key={image.id} 

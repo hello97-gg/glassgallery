@@ -70,7 +70,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
   return (
     <div className="animate-fade-in">
       <h1 className="text-3xl font-bold mb-6 text-primary">Explore Categories</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
         {sortedFlags.map((flag) => {
           const categoryImages = imagesByFlag[flag];
           if (!categoryImages || categoryImages.length === 0) return null;

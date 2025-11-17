@@ -44,7 +44,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
         </Button>
         <div className="flex items-center gap-4">
             <img 
-                src={user.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${user.uploaderName}`}
+                src={user.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${user.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`}
                 alt={user.uploaderName}
                 className="w-16 h-16 rounded-full border-2 border-border"
             />

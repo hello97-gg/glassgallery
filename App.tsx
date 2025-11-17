@@ -6,6 +6,7 @@ import { getImagesFromFirestore, deleteImageFromFirestore } from './services/fir
 import type { ImageMeta, ProfileUser } from './types';
 
 import Sidebar from './components/Header';
+import BottomNav from './components/BottomNav';
 import LoginModal from './components/LoginScreen';
 import ImageGrid from './components/ImageGrid';
 import UploadModal from './components/UploadModal';
@@ -150,7 +151,8 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen w-full bg-background text-primary font-sans">
-      <div className="flex-shrink-0">
+      {/* --- Desktop Sidebar --- */}
+      <div className="hidden md:flex md:flex-shrink-0">
          <Sidebar 
             user={user} 
             onCreateClick={handleCreateClick} 
@@ -160,9 +162,21 @@ const App: React.FC = () => {
             onViewProfile={handleViewProfile}
           />
       </div>
-      <main className="flex-1 p-6 md:p-8">
+
+      {/* --- Main Content --- */}
+      <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8">
         {renderContent()}
       </main>
+
+      {/* --- Mobile Bottom Navigation --- */}
+      <BottomNav
+        user={user}
+        onCreateClick={handleCreateClick}
+        onLoginClick={() => setLoginModalOpen(true)}
+        activeView={activeView}
+        setView={handleSetView}
+        onViewProfile={handleViewProfile}
+      />
       
       {isUploadModalOpen && user && (
         <UploadModal
