@@ -17,6 +17,35 @@ import ProfilePage from './components/ProfilePage';
 import { MobileNotificationsModal } from './components/Notifications';
 import FullScreenDropzone from './components/FullScreenDropzone';
 
+// --- Skeleton Components for Initial Load ---
+const SKELETON_HEIGHTS = ['min-h-[200px]', 'min-h-[280px]', 'min-h-[360px]', 'min-h-[240px]'];
+
+const SkeletonCard: React.FC = () => {
+  const heightClass = SKELETON_HEIGHTS[Math.floor(Math.random() * SKELETON_HEIGHTS.length)];
+  
+  return (
+    <div 
+      className={`
+        bg-surface rounded-xl overflow-hidden mb-4 md:mb-6 break-inside-avoid
+        ${heightClass}
+        relative
+      `}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-surface via-border to-surface bg-[length:200%_100%] animate-shimmer" />
+    </div>
+  );
+};
+
+const SkeletonGrid: React.FC = () => {
+  return (
+    <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-2 md:gap-4 animate-fade-in">
+      {Array.from({ length: 15 }).map((_, index) => (
+        <SkeletonCard key={index} />
+      ))}
+    </div>
+  );
+};
+
 // Smart sorting algorithm to prioritize new and undiscovered content
 const smartSortImages = (images: ImageMeta[]): ImageMeta[] => {
   const now = Date.now();
@@ -339,12 +368,9 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (authLoading || (imagesLoading && activeView !== 'profile')) {
-       return (
-          <div className="flex justify-center items-center h-full">
-            <Spinner />
-          </div>
-       );
+    // Only show skeleton on the very first load when no images are displayed yet.
+    if (authLoading || (imagesLoading && displayedImages.length === 0 && activeView !== 'profile')) {
+       return <SkeletonGrid />;
     }
     
     if (activeView === 'profile' && profileUser) {
