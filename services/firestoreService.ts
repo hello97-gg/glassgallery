@@ -98,14 +98,10 @@ export const toggleImageLike = async (image: ImageMeta, user: User) => {
             likedBy: firebase.firestore.FieldValue.arrayRemove(user.uid),
             likeCount: firebase.firestore.FieldValue.increment(-1),
         });
-        // Delete notification
-        const q = db.collection("notifications")
-            .where('actorUid', '==', user.uid)
-            .where('imageId', '==', image.id)
-            .where('type', '==', 'like');
-        
-        const querySnapshot = await q.get();
-        querySnapshot.forEach(doc => doc.ref.delete());
+        // NOTE: The logic to delete the corresponding notification has been removed.
+        // The user who unlikes (the actor) does not have permission to delete a 
+        // notification that belongs to the image owner (the recipient).
+        // This was the primary source of the "insufficient permissions" error.
 
     } else {
         // Like
