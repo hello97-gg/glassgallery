@@ -3,7 +3,6 @@
 import fetch from "node-fetch";
 import FormData from "form-data";
 import sharp from "sharp";
-import { GoogleGenAI } from "@google/genai";
 
 // Increase the body parser limit to handle larger base64 image uploads.
 export const config = {
@@ -27,61 +26,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing 'file' or 'name' in request body." });
     }
     
-    // --- NSFW Moderation with Google Gemini ---
-    let isNSFW = false;
-    try {
-      if (!process.env.API_KEY) {
-        console.warn("API_KEY environment variable not found. Skipping NSFW check.");
-      } else {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-        const getMimeType = (filename) => {
-          const extension = filename.split('.').pop().toLowerCase();
-          switch (extension) {
-            case 'jpg':
-            case 'jpeg':
-              return 'image/jpeg';
-            case 'png':
-              return 'image/png';
-            case 'gif':
-              return 'image/gif';
-            case 'webp':
-              return 'image/webp';
-            default:
-              return 'image/jpeg';
-          }
-        };
-
-        const imagePart = {
-          inlineData: {
-            mimeType: getMimeType(name),
-            data: file, // `file` is the base64 string from the client
-          },
-        };
-
-        const textPart = {
-          text: "Analyze this image for sensitive content. Categories to consider are: explicit nudity, graphic violence or gore, and sexually explicit material. Respond with only 'yes' if it falls into any of these categories, or 'no' if it does not.",
-        };
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: { parts: [imagePart, textPart] },
-        });
-
-        const resultText = response.text.trim().toLowerCase();
-        if (resultText === 'yes') {
-          isNSFW = true;
-          console.log("Image flagged as NSFW by Gemini.");
-        } else {
-          console.log("Image classified as safe by Gemini.");
-        }
-      }
-    } catch (moderationError) {
-      console.error("Error during Gemini moderation:", moderationError);
-      // Don't block upload if moderation fails, just proceed without the flag
-    }
-    // --- End NSFW Moderation ---
-
     let buffer = Buffer.from(file, "base64");
     
     // --- Image Compression Logic ---
@@ -127,7 +71,7 @@ export default async function handler(req, res) {
         throw new Error(`Received an invalid response from Catbox: ${fileUrl}`);
     }
 
-    res.status(200).json({ url: fileUrl, isNSFW: isNSFW });
+    res.status(200).json({ url: fileUrl });
 
   } catch (err) {
     console.error("Error in /api/uploadToCatbox:", err);

@@ -70,10 +70,6 @@ const App: React.FC = () => {
   }, [images]);
 
   const handleImageClick = (image: ImageMeta) => {
-    if (image.isNSFW && !user) {
-        setLoginModalOpen(true);
-        return;
-    }
     setSelectedImage(image);
   };
 

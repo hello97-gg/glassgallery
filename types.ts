@@ -9,8 +9,8 @@ export interface ImageMeta {
   uploaderName: string;
   uploaderPhotoURL: string;
   license: string;
+  licenseUrl?: string;
   flags: string[];
-  isNSFW: boolean;
   originalWorkUrl?: string;
   uploadedAt: firebase.firestore.Timestamp;
 }
@@ -18,6 +18,7 @@ export interface ImageMeta {
 export interface License {
   value: string;
   label: string;
+  url?: string;
 }
 
 export interface ProfileUser {

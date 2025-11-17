@@ -1,6 +1,3 @@
-
-
-
 import { db } from './firebase';
 // Fix: Use Firebase v8 compatibility imports.
 import firebase from 'firebase/compat/app';
@@ -14,8 +11,8 @@ export const addImageToFirestore = async (
     imageUrl: string, 
     license: string, 
     flags: string[], 
-    isNSFW: boolean,
-    originalWorkUrl?: string
+    originalWorkUrl?: string,
+    licenseUrl?: string
     ) => {
     try {
         // Fix: Use v8 compat syntax for adding a document.
@@ -25,8 +22,8 @@ export const addImageToFirestore = async (
             uploaderName: user.displayName || 'Anonymous',
             uploaderPhotoURL: user.photoURL || '',
             license,
+            licenseUrl: licenseUrl || '',
             flags,
-            isNSFW,
             originalWorkUrl: originalWorkUrl || '',
             // Fix: Use v8 compat syntax for serverTimestamp.
             uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -69,7 +66,7 @@ export const getImagesByUploader = async (uploaderUid: string): Promise<ImageMet
     }
   };
 
-export const updateImageDetails = async (imageId: string, updates: { license: string; flags: string[] }) => {
+export const updateImageDetails = async (imageId: string, updates: { license: string; flags: string[]; licenseUrl?: string }) => {
     try {
         const imageRef = db.collection("images").doc(imageId);
         await imageRef.update(updates);

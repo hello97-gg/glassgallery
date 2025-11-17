@@ -17,6 +17,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [license, setLicense] = useState<string>(LICENSES[0].value);
+  const [licenseUrl, setLicenseUrl] = useState('');
   const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
   const [originalWorkUrl, setOriginalWorkUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -119,11 +120,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
 
     setIsLoading(true);
-    setLoadingMessage('Uploading & Analyzing...');
+    setLoadingMessage('Uploading image...');
     setError(null);
     try {
-      const { url: imageUrl, isNSFW } = await uploadToCatbox(file);
-      await addImageToFirestore(user, imageUrl, license, selectedFlags, isNSFW, originalWorkUrl);
+      const { url: imageUrl } = await uploadToCatbox(file);
+      await addImageToFirestore(user, imageUrl, license, selectedFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '');
       onUploadSuccess();
     } catch (err) {
       setError('Upload failed. Please try again.');
@@ -181,9 +182,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                 <div>
                     <label htmlFor="license" className="block text-sm font-medium text-secondary">License</label>
                     <select id="license" value={license} onChange={(e) => setLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-primary">
-                        {LICENSES.map(l => <option key={l.value} value={l.value}>{l.value}</option>)}
+                        {LICENSES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                     </select>
                 </div>
+                
+                {license === 'Other' && (
+                  <div>
+                    <label htmlFor="licenseUrl" className="block text-sm font-medium text-secondary">License URL</label>
+                    <input type="url" id="licenseUrl" value={licenseUrl} onChange={(e) => setLicenseUrl(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="https://creativecommons.org/licenses/by/4.0/" required />
+                  </div>
+                )}
 
                 <div>
                     <label className="block text-sm font-medium text-secondary">Tags (select at least one)</label>
