@@ -110,6 +110,8 @@ export const toggleImageLike = async (image: ImageMeta, user: User) => {
             // Like: add the user's UID
             newLikedBy = [...likedBy, user.uid];
             
+            // Temporarily removed notification sending to fix transaction issues.
+            /*
             // Create notification, but not for liking your own image.
             if (user.uid !== data.uploaderUid) {
                 const notificationRef = db.collection("notifications").doc();
@@ -125,6 +127,7 @@ export const toggleImageLike = async (image: ImageMeta, user: User) => {
                     read: false,
                 });
             }
+            */
         }
         
         // Atomically update the image with the computed correct values.
