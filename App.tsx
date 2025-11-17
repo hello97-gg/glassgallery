@@ -17,16 +17,50 @@ import ProfilePage from './components/ProfilePage';
 import { MobileNotificationsModal } from './components/Notifications';
 import FullScreenDropzone from './components/FullScreenDropzone';
 
-// Fisher-Yates shuffle utility
-const shuffle = (array: any[]) => {
-  let currentIndex = array.length, randomIndex;
-  while (currentIndex !== 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-  }
-  return array;
+// Smart sorting algorithm to prioritize new and undiscovered content
+const smartSortImages = (images: ImageMeta[]): ImageMeta[] => {
+  const now = Date.now();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const oneWeek = 7 * oneDay;
+
+  // Extend ImageMeta with a temporary sortScore for sorting
+  type ImageWithScore = ImageMeta & { sortScore?: number };
+
+  return images
+    .map((image: ImageMeta): ImageWithScore => {
+      const uploadedAt = image.uploadedAt.toDate().getTime();
+      const age = now - uploadedAt;
+
+      // 1. Recency Score (higher is better)
+      let recencyScore = 0;
+      if (age < oneDay) {
+        recencyScore = 100; // High score for images uploaded in the last 24 hours
+      } else if (age < oneWeek) {
+        recencyScore = 50;  // Medium score for images within the week
+      } else {
+        recencyScore = Math.max(10, 100 - (age / oneWeek)); // Gradually decreasing score for older images
+      }
+
+      // 2. Discovery Score (higher is better for less popular images)
+      const likeCount = image.likeCount || 0;
+      const discoveryScore = 1 / (likeCount + 1); // Ranges from 1 (for 0 likes) down to near 0
+
+      // 3. Randomness to keep the feed from being static
+      const randomFactor = Math.random();
+
+      // Combine scores with weights to determine final sort order
+      // Recency is heavily weighted, followed by a boost for discovery, and a touch of randomness.
+      const finalScore = 
+        (recencyScore * 0.7) +   // 70% weight for recency
+        (discoveryScore * 20) +  // A significant boost for undiscovered images
+        (randomFactor * 10);     // A small random factor
+
+      return { ...image, sortScore: finalScore };
+    })
+    .sort((a, b) => (b.sortScore ?? 0) - (a.sortScore ?? 0)) // Sort descending by score
+    .map(({ sortScore, ...rest }) => rest); // Remove the temporary score property
 };
+
 
 // Throttle utility to limit how often a function can run
 const throttle = (func: (...args: any[]) => void, limit: number) => {
@@ -94,9 +128,9 @@ const App: React.FC = () => {
     setImagesLoading(true);
     try {
       const { images: fetchedImages } = await getImagesFromFirestore();
-      const shuffled = shuffle([...fetchedImages]);
-      setAllImages(shuffled);
-      setDisplayedImages(shuffled.slice(0, PAGE_SIZE));
+      const sorted = smartSortImages([...fetchedImages]);
+      setAllImages(sorted);
+      setDisplayedImages(sorted.slice(0, PAGE_SIZE));
       setCurrentIndex(PAGE_SIZE);
     } catch (error) {
       console.error("Error fetching images:", error);
@@ -120,10 +154,10 @@ const App: React.FC = () => {
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(nextIndex);
     } else {
-        // Reached the end, re-shuffle and append to create an infinite loop
-        const reshuffled = shuffle([...allImages]);
-        setAllImages(reshuffled);
-        const newImages = reshuffled.slice(0, PAGE_SIZE);
+        // Reached the end, re-sort and append to create an infinite loop
+        const resorted = smartSortImages([...allImages]);
+        setAllImages(resorted);
+        const newImages = resorted.slice(0, PAGE_SIZE);
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(PAGE_SIZE);
     }

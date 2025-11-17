@@ -6,17 +6,6 @@ import ImageGrid from './ImageGrid';
 import Spinner from './Spinner';
 import Button from './Button';
 
-// Fisher-Yates shuffle utility
-const shuffle = (array: any[]) => {
-  let currentIndex = array.length, randomIndex;
-  while (currentIndex !== 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-  }
-  return array;
-};
-
 // Throttle utility to limit how often a function can run
 const throttle = (func: (...args: any[]) => void, limit: number) => {
   let inThrottle: boolean;
@@ -48,9 +37,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
     setIsLoading(true);
     try {
       const { images: userImages } = await getImagesByUploader(user.uploaderUid);
-      const shuffled = shuffle([...userImages]);
-      setAllImages(shuffled);
-      setDisplayedImages(shuffled.slice(0, PAGE_SIZE));
+      // Images are already sorted by date from Firestore, no need to shuffle on profile page.
+      setAllImages(userImages);
+      setDisplayedImages(userImages.slice(0, PAGE_SIZE));
       setCurrentIndex(PAGE_SIZE);
     } catch (error) {
       console.error("Failed to fetch user images:", error);
@@ -72,9 +61,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(nextIndex);
     } else {
-        const reshuffled = shuffle([...allImages]);
-        setAllImages(reshuffled);
-        const newImages = reshuffled.slice(0, PAGE_SIZE);
+        // Reached the end, loop back to the start in the same order.
+        const newImages = allImages.slice(0, PAGE_SIZE);
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(PAGE_SIZE);
     }
