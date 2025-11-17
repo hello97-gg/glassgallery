@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
   }
 
   return (
-    <aside className="h-screen w-20 hover:w-56 transition-all duration-300 group bg-background border-r border-border p-3 flex flex-col sticky top-0">
+    <aside className="h-screen w-20 hover:w-56 transition-all duration-300 group bg-background border-r border-border p-3 flex flex-col sticky top-0 z-30">
       {/* Logo */}
       <div className="flex items-center group-hover:space-x-3 p-3 mb-8">
          <div className="w-10 h-10 rounded-lg bg-surface flex-shrink-0 flex items-center justify-center">
@@ -79,7 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
         )}
         <NavItem label="Create" onClick={onCreateClick} isProminent>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110 2h5V4a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
         </NavItem>
       </nav>
