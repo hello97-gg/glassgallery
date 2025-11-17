@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { getImagesFromFirestore, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike } from './services/firestoreService';
+import { getImagesFromFirestore, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike, PAGE_SIZE } from './services/firestoreService';
 import type { ImageMeta, ProfileUser, Notification } from './types';
 
 import Sidebar from './components/Header';
@@ -16,12 +16,39 @@ import ExplorePage from './components/ExplorePage';
 import ProfilePage from './components/ProfilePage';
 import { MobileNotificationsModal } from './components/Notifications';
 
+// Fisher-Yates shuffle utility
+const shuffle = (array: any[]) => {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
+};
+
+// Throttle utility to limit how often a function can run
+const throttle = (func: (...args: any[]) => void, limit: number) => {
+  let inThrottle: boolean;
+  return function(this: any, ...args: any[]) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [images, setImages] = useState<ImageMeta[]>([]);
-  const [shuffledImages, setShuffledImages] = useState<ImageMeta[]>([]);
+  
+  // State for image handling
+  const [allImages, setAllImages] = useState<ImageMeta[]>([]);
+  const [displayedImages, setDisplayedImages] = useState<ImageMeta[]>([]);
   const [imagesLoading, setImagesLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
   const [selectedImage, setSelectedImage] = useState<ImageMeta | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
@@ -59,17 +86,11 @@ const App: React.FC = () => {
   const fetchImages = useCallback(async () => {
     setImagesLoading(true);
     try {
-      const fetchedImages = await getImagesFromFirestore();
-      setImages(fetchedImages); // Keep original order for explore page
-      
-      // Shuffle a copy for the home page grid to prevent re-shuffling on like
-      const array = [...fetchedImages];
-      for (let i = array.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [array[i], array[j]] = [array[j], array[i]];
-      }
-      setShuffledImages(array);
-
+      const { images: fetchedImages } = await getImagesFromFirestore();
+      const shuffled = shuffle([...fetchedImages]);
+      setAllImages(shuffled);
+      setDisplayedImages(shuffled.slice(0, PAGE_SIZE));
+      setCurrentIndex(PAGE_SIZE);
     } catch (error) {
       console.error("Error fetching images:", error);
     } finally {
@@ -83,28 +104,61 @@ const App: React.FC = () => {
     }
   }, [fetchImages, activeView]);
 
+  const loadMoreImages = useCallback(() => {
+    if (imagesLoading || allImages.length === 0) return;
+
+    if (currentIndex < allImages.length) {
+        const nextIndex = currentIndex + PAGE_SIZE;
+        const newImages = allImages.slice(currentIndex, nextIndex);
+        setDisplayedImages(prev => [...prev, ...newImages]);
+        setCurrentIndex(nextIndex);
+    } else {
+        // Reached the end, re-shuffle and append to create an infinite loop
+        const reshuffled = shuffle([...allImages]);
+        setAllImages(reshuffled);
+        const newImages = reshuffled.slice(0, PAGE_SIZE);
+        setDisplayedImages(prev => [...prev, ...newImages]);
+        setCurrentIndex(PAGE_SIZE);
+    }
+  }, [currentIndex, allImages, imagesLoading]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (activeView === 'home') {
+          const scrollThreshold = 800; // Pixels from bottom, increased for smoother triggering
+          const isAtBottom = window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - scrollThreshold;
+          
+          if (isAtBottom) {
+            loadMoreImages();
+          }
+      }
+    };
+    
+    const throttledScrollHandler = throttle(handleScroll, 200);
+
+    window.addEventListener('scroll', throttledScrollHandler);
+    return () => window.removeEventListener('scroll', throttledScrollHandler);
+  }, [loadMoreImages, activeView]);
+
   const handleImageClick = (image: ImageMeta) => {
     setSelectedImage(image);
   };
   
   const handleImageClickFromNotification = (partialImage: Partial<ImageMeta>) => {
-    // Notifications only contain partial data. Find the full image object.
-    const fullImage = images.find(i => i.id === partialImage.id) || shuffledImages.find(i => i.id === partialImage.id);
+    const fullImage = allImages.find(i => i.id === partialImage.id);
     if (fullImage) {
         setSelectedImage(fullImage);
     } else {
-        // Fallback or error handling if image not found in current state
         console.warn("Could not find full image data for notification.", partialImage);
     }
   };
 
   const handleUploadSuccess = () => {
     setUploadModalOpen(false);
-    // If on profile page, stay there, otherwise go home to see new image
     if (activeView !== 'profile') {
         setActiveView('home');
     }
-    fetchImages();
+    fetchImages(); // Refetch all to include the new one
   };
 
   const handleCreateClick = () => {
@@ -121,7 +175,7 @@ const App: React.FC = () => {
     }
     setProfileUser(userToView);
     setActiveView('profile');
-    setSelectedImage(null); // Close detail modal if open
+    setSelectedImage(null);
   };
 
   const handleBack = () => {
@@ -131,12 +185,14 @@ const App: React.FC = () => {
   
   const handleSetView = (view: 'home' | 'explore' | 'notifications') => {
     setActiveView(view);
-    setProfileUser(null); // Clear profile when navigating away
+    setProfileUser(null);
   }
 
   const handleImageUpdate = (updatedImage: ImageMeta) => {
-    setImages(prevImages => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img));
-    setShuffledImages(prevShuffled => prevShuffled.map(img => img.id === updatedImage.id ? updatedImage : img));
+    const updater = (prevImages: ImageMeta[]) => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img);
+    setDisplayedImages(updater);
+    setAllImages(updater);
+
     if (selectedImage && selectedImage.id === updatedImage.id) {
         setSelectedImage(updatedImage);
     }
@@ -148,39 +204,31 @@ const App: React.FC = () => {
         return;
     }
     
-    // Optimistic update
     const oldLikedBy = image.likedBy || [];
     const hasLiked = oldLikedBy.includes(user.uid);
     const newLikedBy = hasLiked
         ? oldLikedBy.filter(id => id !== user.uid)
         : [...oldLikedBy, user.uid];
 
-    const updatedImage = {
-        ...image,
-        likedBy: newLikedBy,
-        likeCount: newLikedBy.length,
-    };
+    const updatedImage = { ...image, likedBy: newLikedBy, likeCount: newLikedBy.length };
     handleImageUpdate(updatedImage);
 
     try {
         await toggleImageLike(image, user);
     } catch (error) {
         console.error("Failed to toggle like:", error);
-        // Revert optimistic update on failure
-        handleImageUpdate(image); 
+        handleImageUpdate(image); // Revert on failure
     }
   };
-
 
   const handleImageDelete = async (imageId: string) => {
     try {
         await deleteImageFromFirestore(imageId);
-        setImages(prevImages => prevImages.filter(img => img.id !== imageId));
-        setShuffledImages(prevShuffled => prevShuffled.filter(img => img.id !== imageId));
-        setSelectedImage(null); // Close the modal
+        setDisplayedImages(prev => prev.filter(img => img.id !== imageId));
+        setAllImages(prev => prev.filter(img => img.id !== imageId));
+        setSelectedImage(null);
     } catch (error) {
         console.error("Failed to delete image:", error);
-        // Here you might want to show an error toast to the user
     }
   };
 
@@ -198,16 +246,16 @@ const App: React.FC = () => {
     }
     
     if (activeView === 'explore') {
-        return <ExplorePage images={images} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
+        return <ExplorePage images={allImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
     }
 
-    return <ImageGrid images={shuffledImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
+    return (
+        <ImageGrid images={displayedImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
+    );
   }
-
 
   return (
     <div className="flex min-h-screen w-full bg-background text-primary font-sans">
-      {/* --- Desktop Sidebar --- */}
       <div className="hidden md:flex md:flex-shrink-0">
          <Sidebar 
             user={user} 
@@ -221,12 +269,10 @@ const App: React.FC = () => {
           />
       </div>
 
-      {/* --- Main Content --- */}
       <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8">
         {renderContent()}
       </main>
 
-      {/* --- Mobile Bottom Navigation --- */}
       <BottomNav
         user={user}
         onCreateClick={handleCreateClick}

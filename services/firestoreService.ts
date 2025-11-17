@@ -6,6 +6,8 @@ import 'firebase/compat/auth';
 import type { ImageMeta, Notification } from '../types';
 import type { User } from 'firebase/auth';
 
+export const PAGE_SIZE = 20; // Increased for better client-side pagination feel
+
 export const addImageToFirestore = async (
     user: User, 
     imageUrl: string, 
@@ -36,32 +38,36 @@ export const addImageToFirestore = async (
     }
 };
 
-export const getImagesFromFirestore = async (): Promise<ImageMeta[]> => {
+export const getImagesFromFirestore = async (): Promise<{ images: ImageMeta[] }> => {
     try {
-        // Fix: Use v8 compat syntax for querying documents.
         const q = db.collection("images").orderBy("uploadedAt", "desc");
         const querySnapshot = await q.get();
-        // Fix: Map documents using v8 compat API. DocumentData type is not needed.
-        return querySnapshot.docs.map((doc) => ({
+        
+        const images = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
         })) as ImageMeta[];
+
+        return { images };
     } catch (error) {
         console.error("Error getting documents: ", error);
         throw error;
     }
 };
 
-export const getImagesByUploader = async (uploaderUid: string): Promise<ImageMeta[]> => {
+export const getImagesByUploader = async (uploaderUid: string): Promise<{ images: ImageMeta[] }> => {
     try {
       const q = db.collection("images")
         .where("uploaderUid", "==", uploaderUid)
         .orderBy("uploadedAt", "desc");
+
       const querySnapshot = await q.get();
-      return querySnapshot.docs.map((doc) => ({
+      const images = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
       })) as ImageMeta[];
+      
+      return { images };
     } catch (error) {
       console.error("Error getting user documents: ", error);
       throw error;

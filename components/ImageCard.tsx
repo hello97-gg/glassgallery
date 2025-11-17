@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
 
@@ -24,7 +24,9 @@ const HeartIconOutline = () => (
 
 
 const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfile, onLikeToggle, className = '' }) => {
-  const combinedClassName = `group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid ${className}`;
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  const combinedClassName = `group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid min-h-[150px] ${className}`;
   const hasLiked = user && image.likedBy?.includes(user.uid);
 
   const handleProfileClick = (e: React.MouseEvent) => {
@@ -49,8 +51,9 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfi
       <img
         src={image.imageUrl}
         alt="User upload"
-        className="w-full h-auto object-cover transition-all duration-300"
+        className={`w-full h-auto object-cover transition-opacity duration-500 ease-in-out ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
         loading="lazy"
+        onLoad={() => setIsLoaded(true)}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-3">
         <button onClick={handleProfileClick} className="flex items-center space-x-2 group/profile hover:scale-105 transition-transform z-10">

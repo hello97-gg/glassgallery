@@ -1,10 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { User } from 'firebase/auth';
 import type { ProfileUser, ImageMeta } from '../types';
-import { getImagesByUploader } from '../services/firestoreService';
+import { getImagesByUploader, PAGE_SIZE } from '../services/firestoreService';
 import ImageGrid from './ImageGrid';
 import Spinner from './Spinner';
 import Button from './Button';
+
+// Fisher-Yates shuffle utility
+const shuffle = (array: any[]) => {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
+};
+
+// Throttle utility to limit how often a function can run
+const throttle = (func: (...args: any[]) => void, limit: number) => {
+  let inThrottle: boolean;
+  return function(this: any, ...args: any[]) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+};
 
 interface ProfilePageProps {
   user: ProfileUser;
@@ -16,24 +39,61 @@ interface ProfilePageProps {
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, onImageClick, onViewProfile, onLikeToggle }) => {
-  const [images, setImages] = useState<ImageMeta[]>([]);
+  const [allImages, setAllImages] = useState<ImageMeta[]>([]);
+  const [displayedImages, setDisplayedImages] = useState<ImageMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const fetchUserImages = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { images: userImages } = await getImagesByUploader(user.uploaderUid);
+      const shuffled = shuffle([...userImages]);
+      setAllImages(shuffled);
+      setDisplayedImages(shuffled.slice(0, PAGE_SIZE));
+      setCurrentIndex(PAGE_SIZE);
+    } catch (error) {
+      console.error("Failed to fetch user images:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user.uploaderUid]);
 
   useEffect(() => {
-    const fetchUserImages = async () => {
-      setIsLoading(true);
-      try {
-        const userImages = await getImagesByUploader(user.uploaderUid);
-        setImages(userImages);
-      } catch (error) {
-        console.error("Failed to fetch user images:", error);
-      } finally {
-        setIsLoading(false);
-      }
+    fetchUserImages();
+  }, [fetchUserImages]);
+
+  const loadMoreUserImages = useCallback(() => {
+    if (isLoading || allImages.length === 0) return;
+
+    if (currentIndex < allImages.length) {
+        const nextIndex = currentIndex + PAGE_SIZE;
+        const newImages = allImages.slice(currentIndex, nextIndex);
+        setDisplayedImages(prev => [...prev, ...newImages]);
+        setCurrentIndex(nextIndex);
+    } else {
+        const reshuffled = shuffle([...allImages]);
+        setAllImages(reshuffled);
+        const newImages = reshuffled.slice(0, PAGE_SIZE);
+        setDisplayedImages(prev => [...prev, ...newImages]);
+        setCurrentIndex(PAGE_SIZE);
+    }
+  }, [currentIndex, allImages, isLoading]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+        const scrollThreshold = 800;
+        const isAtBottom = window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - scrollThreshold;
+
+        if (isAtBottom) {
+            loadMoreUserImages();
+        }
     };
 
-    fetchUserImages();
-  }, [user.uploaderUid]);
+    const throttledScrollHandler = throttle(handleScroll, 200);
+    window.addEventListener('scroll', throttledScrollHandler);
+    return () => window.removeEventListener('scroll', throttledScrollHandler);
+  }, [loadMoreUserImages]);
 
   return (
     <div className="animate-fade-in">
@@ -51,7 +111,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
             />
             <div>
                 <h1 className="text-3xl font-bold text-primary">{user.uploaderName}</h1>
-                <p className="text-md text-secondary">{images.length} uploads</p>
+                <p className="text-md text-secondary">{allImages.length} uploads</p>
             </div>
         </div>
       </div>
@@ -61,7 +121,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
           <Spinner />
         </div>
       ) : (
-        <ImageGrid user={loggedInUser} images={images} onImageClick={onImageClick} onViewProfile={onViewProfile} onLikeToggle={onLikeToggle} />
+        <ImageGrid user={loggedInUser} images={displayedImages} onImageClick={onImageClick} onViewProfile={onViewProfile} onLikeToggle={onLikeToggle} />
       )}
     </div>
   );
