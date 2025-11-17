@@ -28,7 +28,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div className="w-full max-w-sm text-center bg-surface border border-border rounded-2xl shadow-lg p-8 space-y-6" onClick={(e) => e.stopPropagation()}>
                 <div className="relative">
                     <button onClick={onClose} className="absolute -top-4 -right-4 text-secondary hover:text-primary transition-colors text-3xl leading-none">&times;</button>

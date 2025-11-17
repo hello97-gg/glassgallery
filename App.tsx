@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [images, setImages] = useState<ImageMeta[]>([]);
+  const [shuffledImages, setShuffledImages] = useState<ImageMeta[]>([]);
   const [imagesLoading, setImagesLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<ImageMeta | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
@@ -58,6 +59,15 @@ const App: React.FC = () => {
     try {
       const fetchedImages = await getImagesFromFirestore();
       setImages(fetchedImages); // Keep original order for explore page
+      
+      // Shuffle a copy for the home page grid to prevent re-shuffling on like
+      const array = [...fetchedImages];
+      for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+      }
+      setShuffledImages(array);
+
     } catch (error) {
       console.error("Error fetching images:", error);
     } finally {
@@ -70,16 +80,6 @@ const App: React.FC = () => {
       fetchImages();
     }
   }, [fetchImages, activeView]);
-
-  const shuffledImages = useMemo(() => {
-    // Create a new array to avoid mutating the original `images` state
-    const array = [...images];
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  }, [images]);
 
   const handleImageClick = (image: ImageMeta) => {
     setSelectedImage(image);
@@ -123,6 +123,7 @@ const App: React.FC = () => {
 
   const handleImageUpdate = (updatedImage: ImageMeta) => {
     setImages(prevImages => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img));
+    setShuffledImages(prevShuffled => prevShuffled.map(img => img.id === updatedImage.id ? updatedImage : img));
     if (selectedImage && selectedImage.id === updatedImage.id) {
         setSelectedImage(updatedImage);
     }
@@ -159,6 +160,7 @@ const App: React.FC = () => {
     try {
         await deleteImageFromFirestore(imageId);
         setImages(prevImages => prevImages.filter(img => img.id !== imageId));
+        setShuffledImages(prevShuffled => prevShuffled.filter(img => img.id !== imageId));
         setSelectedImage(null); // Close the modal
     } catch (error) {
         console.error("Failed to delete image:", error);
