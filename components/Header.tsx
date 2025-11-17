@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
 import { logOut } from '../services/firebase';
-import { ProfileUser } from '../types';
+import { ProfileUser, Notification, ImageMeta } from '../types';
+import { NotificationBell } from './Notifications';
 
 interface SidebarProps {
   user: User | null;
   onCreateClick: () => void;
   onLoginClick: () => void;
-  activeView: 'home' | 'explore' | 'profile';
-  setView: (view: 'home' | 'explore') => void;
+  activeView: 'home' | 'explore' | 'profile' | 'notifications';
+  setView: (view: 'home' | 'explore' | 'notifications') => void;
   onViewProfile: (user: ProfileUser) => void;
+  notifications: Notification[];
+  onImageClick: (image: ImageMeta) => void;
 }
 
 const NavItem: React.FC<{ children: React.ReactNode, label: string, onClick?: () => void, active?: boolean, isProminent?: boolean }> = ({ children, label, onClick, active, isProminent }) => (
@@ -27,7 +30,7 @@ const NavItem: React.FC<{ children: React.ReactNode, label: string, onClick?: ()
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, activeView, setView, onViewProfile }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, activeView, setView, onViewProfile, notifications, onImageClick }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleMyProfileClick = () => {
@@ -67,6 +70,13 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
             <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
           </svg>
         </NavItem>
+        {user && (
+            <NotificationBell 
+                notifications={notifications} 
+                onImageClick={onImageClick} 
+                isSidebar={true}
+            />
+        )}
         <NavItem label="Create" onClick={onCreateClick} isProminent>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />

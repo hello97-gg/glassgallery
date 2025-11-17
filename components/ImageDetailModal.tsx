@@ -13,6 +13,7 @@ interface ImageDetailModalProps {
   onViewProfile: (user: ProfileUser) => void;
   onImageUpdate: (updatedImage: ImageMeta) => void;
   onImageDelete: (imageId: string) => void;
+  onLikeToggle: (image: ImageMeta) => void;
 }
 
 const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -89,7 +90,19 @@ const AttributionModal: React.FC<{ image: ImageMeta, onClose: () => void }> = ({
   );
 };
 
-const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClose, onViewProfile, onImageUpdate, onImageDelete }) => {
+const HeartIconSolid = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+    </svg>
+);
+const HeartIconOutline = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+    </svg>
+);
+
+
+const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClose, onViewProfile, onImageUpdate, onImageDelete, onLikeToggle }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedLicense, setEditedLicense] = useState(image.license);
   const [editedLicenseUrl, setEditedLicenseUrl] = useState(image.licenseUrl || '');
@@ -100,6 +113,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const [showAttribution, setShowAttribution] = useState(false);
 
   const isOwner = user?.uid === image.uploaderUid;
+  const hasLiked = user && image.likedBy?.includes(user.uid);
   
   const handleProfileClick = () => {
     onViewProfile({
@@ -257,13 +271,19 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
         <div className="md:w-1/3 p-6 flex flex-col space-y-4 overflow-y-auto text-primary relative">
           <button onClick={onClose} className="absolute top-4 right-4 text-3xl font-light text-secondary hover:text-primary">&times;</button>
           
-          <button onClick={handleProfileClick} className="w-full text-left flex items-center gap-3 border-b border-border pb-4 hover:bg-border/50 p-2 -m-2 rounded-lg transition-colors">
-            <img src={image.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${image.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`} alt={image.uploaderName} className="w-12 h-12 rounded-full" />
-            <div>
-              <p className="font-semibold">{image.uploaderName}</p>
-              <p className="text-xs text-secondary">Uploaded on {new Date(image.uploadedAt?.toDate()).toLocaleDateString()}</p>
-            </div>
-          </button>
+          <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
+            <button onClick={handleProfileClick} className="flex-grow text-left flex items-center gap-3 hover:bg-border/50 p-2 -m-2 rounded-lg transition-colors">
+              <img src={image.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${image.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`} alt={image.uploaderName} className="w-12 h-12 rounded-full" />
+              <div>
+                <p className="font-semibold">{image.uploaderName}</p>
+                <p className="text-xs text-secondary">Uploaded on {new Date(image.uploadedAt?.toDate()).toLocaleDateString()}</p>
+              </div>
+            </button>
+            <button onClick={() => onLikeToggle(image)} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-colors ${hasLiked ? 'bg-accent/20 text-accent' : 'bg-border text-secondary hover:bg-border/80'}`}>
+                {hasLiked ? <HeartIconSolid /> : <HeartIconOutline />}
+                <span>{image.likeCount || 0}</span>
+            </button>
+          </div>
           
           <div className="flex-grow space-y-4">
             {renderDetails()}

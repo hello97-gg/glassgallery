@@ -3,7 +3,7 @@ import { db } from './firebase';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import 'firebase/compat/auth';
-import type { ImageMeta } from '../types';
+import type { ImageMeta, Notification } from '../types';
 import type { User } from 'firebase/auth';
 
 export const addImageToFirestore = async (
@@ -25,6 +25,8 @@ export const addImageToFirestore = async (
             licenseUrl: licenseUrl || '',
             flags,
             originalWorkUrl: originalWorkUrl || '',
+            likeCount: 0,
+            likedBy: [],
             // Fix: Use v8 compat syntax for serverTimestamp.
             uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
@@ -84,4 +86,73 @@ export const deleteImageFromFirestore = async (imageId: string) => {
         console.error("Error deleting document: ", error);
         throw error;
     }
+};
+
+export const toggleImageLike = async (image: ImageMeta, user: User) => {
+    const imageRef = db.collection("images").doc(image.id);
+    const hasLiked = image.likedBy?.includes(user.uid);
+
+    if (hasLiked) {
+        // Unlike
+        await imageRef.update({
+            likedBy: firebase.firestore.FieldValue.arrayRemove(user.uid),
+            likeCount: firebase.firestore.FieldValue.increment(-1),
+        });
+        // Delete notification
+        const q = db.collection("notifications")
+            .where('actorUid', '==', user.uid)
+            .where('imageId', '==', image.id)
+            .where('type', '==', 'like');
+        
+        const querySnapshot = await q.get();
+        querySnapshot.forEach(doc => doc.ref.delete());
+
+    } else {
+        // Like
+        await imageRef.update({
+            likedBy: firebase.firestore.FieldValue.arrayUnion(user.uid),
+            likeCount: firebase.firestore.FieldValue.increment(1),
+        });
+        // Create notification, but not for liking your own image
+        if (user.uid !== image.uploaderUid) {
+            await db.collection("notifications").add({
+                recipientUid: image.uploaderUid,
+                actorUid: user.uid,
+                actorName: user.displayName || 'Someone',
+                actorPhotoURL: user.photoURL || '',
+                type: 'like',
+                imageId: image.id,
+                imageUrl: image.imageUrl,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false,
+            });
+        }
+    }
+};
+
+export const getNotificationsForUser = (userId: string, callback: (notifications: Notification[]) => void): (() => void) => {
+    const q = db.collection("notifications")
+        .where("recipientUid", "==", userId)
+        .orderBy("createdAt", "desc")
+        .limit(30);
+
+    const unsubscribe = q.onSnapshot(querySnapshot => {
+        const notifications = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        })) as Notification[];
+        callback(notifications);
+    });
+
+    return unsubscribe;
+};
+
+export const markNotificationsAsRead = async (notificationIds: string[]) => {
+    if (notificationIds.length === 0) return;
+    const batch = db.batch();
+    notificationIds.forEach(id => {
+        const notifRef = db.collection("notifications").doc(id);
+        batch.update(notifRef, { read: true });
+    });
+    await batch.commit();
 };

@@ -1,14 +1,15 @@
 import React from 'react';
 import type { User } from 'firebase/auth';
-import { ProfileUser } from '../types';
+import { ProfileUser, Notification } from '../types';
 
 interface BottomNavProps {
   user: User | null;
   onCreateClick: () => void;
   onLoginClick: () => void;
-  activeView: 'home' | 'explore' | 'profile';
-  setView: (view: 'home' | 'explore') => void;
+  activeView: 'home' | 'explore' | 'profile' | 'notifications';
+  setView: (view: 'home' | 'explore' | 'notifications') => void;
   onViewProfile: (user: ProfileUser) => void;
+  notifications: Notification[];
 }
 
 const NavItem: React.FC<{
@@ -18,14 +19,16 @@ const NavItem: React.FC<{
 }> = ({ children, onClick, active }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center w-1/4 h-16 transition-colors duration-200 focus:outline-none ${active ? 'text-primary' : 'text-secondary hover:text-primary'}`}
+    className={`flex flex-col items-center justify-center flex-1 h-16 transition-colors duration-200 focus:outline-none relative ${active ? 'text-primary' : 'text-secondary hover:text-primary'}`}
     aria-current={active ? 'page' : undefined}
   >
     {children}
   </button>
 );
 
-const BottomNav: React.FC<BottomNavProps> = ({ user, onCreateClick, onLoginClick, activeView, setView, onViewProfile }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ user, onCreateClick, onLoginClick, activeView, setView, onViewProfile, notifications }) => {
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleProfileClick = () => {
     if (user) {
@@ -38,6 +41,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ user, onCreateClick, onLoginClick
         onLoginClick();
     }
   }
+
+  const handleNotificationsClick = () => {
+      // For now, this just changes the view. A modal/panel could be implemented later.
+      // alert(`${unreadCount} unread notifications.`);
+      // For now, we will just log to console. A proper UI will be added in a future step.
+      console.log('Notifications clicked', notifications);
+  };
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 h-16 bg-surface border-t border-border flex justify-around items-center z-40 md:hidden">
@@ -58,8 +68,18 @@ const BottomNav: React.FC<BottomNavProps> = ({ user, onCreateClick, onLoginClick
         </svg>
       </NavItem>
       <NavItem onClick={onCreateClick}>
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-accent" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+        </svg>
       </NavItem>
+       {user && (
+          <NavItem onClick={handleNotificationsClick}>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+             {unreadCount > 0 && (
+                <span className="absolute top-2 right-1/2 mr-[-24px] flex items-center justify-center w-5 h-5 text-xs font-bold text-primary bg-red-500 rounded-full">{unreadCount}</span>
+             )}
+          </NavItem>
+      )}
       <NavItem onClick={handleProfileClick} active={activeView === 'profile'}>
         {user ? (
             <img 

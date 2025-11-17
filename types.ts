@@ -13,6 +13,8 @@ export interface ImageMeta {
   flags: string[];
   originalWorkUrl?: string;
   uploadedAt: firebase.firestore.Timestamp;
+  likeCount?: number;
+  likedBy?: string[];
 }
 
 export interface License {
@@ -25,4 +27,17 @@ export interface ProfileUser {
   uploaderUid: string;
   uploaderName: string;
   uploaderPhotoURL: string;
+}
+
+export interface Notification {
+  id: string;
+  recipientUid: string;
+  actorUid: string;
+  actorName: string;
+  actorPhotoURL: string;
+  type: 'like';
+  imageId: string;
+  imageUrl: string;
+  createdAt: firebase.firestore.Timestamp;
+  read: boolean;
 }

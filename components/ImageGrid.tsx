@@ -8,9 +8,10 @@ interface ImageGridProps {
   user: User | null;
   onImageClick: (image: ImageMeta) => void;
   onViewProfile: (user: ProfileUser) => void;
+  onLikeToggle: (image: ImageMeta) => void;
 }
 
-const ImageGrid: React.FC<ImageGridProps> = ({ images, user, onImageClick, onViewProfile }) => {
+const ImageGrid: React.FC<ImageGridProps> = ({ images, user, onImageClick, onViewProfile, onLikeToggle }) => {
   if (images.length === 0) {
     return (
       <div className="text-center py-16">
@@ -32,6 +33,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({ images, user, onImageClick, onVie
             user={user}
             onClick={() => onImageClick(image)} 
             onViewProfile={onViewProfile}
+            onLikeToggle={onLikeToggle}
         />
       ))}
     </div>

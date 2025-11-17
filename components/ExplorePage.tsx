@@ -9,6 +9,7 @@ interface ExplorePageProps {
   user: User | null;
   onImageClick: (image: ImageMeta) => void;
   onViewProfile: (user: ProfileUser) => void;
+  onLikeToggle: (image: ImageMeta) => void;
 }
 
 const CategoryCard: React.FC<{ flag: string, image: ImageMeta, onClick: () => void }> = ({ flag, image, onClick }) => {
@@ -22,7 +23,7 @@ const CategoryCard: React.FC<{ flag: string, image: ImageMeta, onClick: () => vo
   );
 };
 
-const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, onViewProfile }) => {
+const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, onViewProfile, onLikeToggle }) => {
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null);
 
   const imagesByFlag = useMemo(() => {
@@ -62,7 +63,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
             </Button>
             <h1 className="text-3xl font-bold text-primary">{selectedFlag}</h1>
         </div>
-        <ImageGrid images={imagesByFlag[selectedFlag]} user={user} onImageClick={onImageClick} onViewProfile={onViewProfile} />
+        <ImageGrid images={imagesByFlag[selectedFlag]} user={user} onImageClick={onImageClick} onViewProfile={onViewProfile} onLikeToggle={onLikeToggle} />
       </div>
     );
   }

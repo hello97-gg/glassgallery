@@ -12,9 +12,10 @@ interface ProfilePageProps {
   onBack: () => void;
   onImageClick: (image: ImageMeta) => void;
   onViewProfile: (user: ProfileUser) => void;
+  onLikeToggle: (image: ImageMeta) => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, onImageClick, onViewProfile }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, onImageClick, onViewProfile, onLikeToggle }) => {
   const [images, setImages] = useState<ImageMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,7 +61,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
           <Spinner />
         </div>
       ) : (
-        <ImageGrid user={loggedInUser} images={images} onImageClick={onImageClick} onViewProfile={onViewProfile} />
+        <ImageGrid user={loggedInUser} images={images} onImageClick={onImageClick} onViewProfile={onViewProfile} onLikeToggle={onLikeToggle} />
       )}
     </div>
   );

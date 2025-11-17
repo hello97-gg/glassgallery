@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { getImagesFromFirestore, deleteImageFromFirestore } from './services/firestoreService';
-import type { ImageMeta, ProfileUser } from './types';
+import { getImagesFromFirestore, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike } from './services/firestoreService';
+import type { ImageMeta, ProfileUser, Notification } from './types';
 
 import Sidebar from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -24,14 +24,15 @@ const App: React.FC = () => {
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
   
-  const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile' | 'notifications'>('home');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [lastView, setLastView] = useState<'home' | 'explore'>('home');
 
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     // Fix: Use v8 compat syntax for onAuthStateChanged.
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
       // Close login modal if user signs in successfully
@@ -39,8 +40,18 @@ const App: React.FC = () => {
         setLoginModalOpen(false);
       }
     });
-    return () => unsubscribe();
+
+    return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+        const unsubscribeNotifications = getNotificationsForUser(user.uid, setNotifications);
+        return () => unsubscribeNotifications();
+    } else {
+        setNotifications([]);
+    }
+  }, [user]);
 
   const fetchImages = useCallback(async () => {
     setImagesLoading(true);
@@ -92,8 +103,8 @@ const App: React.FC = () => {
   };
 
   const handleViewProfile = (userToView: ProfileUser) => {
-    if (activeView === 'home' || activeView === 'explore') {
-        setLastView(activeView);
+    if (activeView !== 'profile') {
+        setLastView(activeView as 'home' | 'explore');
     }
     setProfileUser(userToView);
     setActiveView('profile');
@@ -105,7 +116,7 @@ const App: React.FC = () => {
     setProfileUser(null);
   }
   
-  const handleSetView = (view: 'home' | 'explore') => {
+  const handleSetView = (view: 'home' | 'explore' | 'notifications') => {
     setActiveView(view);
     setProfileUser(null); // Clear profile when navigating away
   }
@@ -116,6 +127,33 @@ const App: React.FC = () => {
         setSelectedImage(updatedImage);
     }
   };
+
+  const handleLikeToggle = async (image: ImageMeta) => {
+    if (!user) {
+        setLoginModalOpen(true);
+        return;
+    }
+    
+    // Optimistic update
+    const hasLiked = image.likedBy?.includes(user.uid);
+    const updatedImage = {
+        ...image,
+        likeCount: (image.likeCount || 0) + (hasLiked ? -1 : 1),
+        likedBy: hasLiked
+            ? image.likedBy?.filter(id => id !== user.uid)
+            : [...(image.likedBy || []), user.uid],
+    };
+    handleImageUpdate(updatedImage);
+
+    try {
+        await toggleImageLike(image, user);
+    } catch (error) {
+        console.error("Failed to toggle like:", error);
+        // Revert optimistic update on failure
+        handleImageUpdate(image); 
+    }
+  };
+
 
   const handleImageDelete = async (imageId: string) => {
     try {
@@ -138,14 +176,14 @@ const App: React.FC = () => {
     }
     
     if (activeView === 'profile' && profileUser) {
-        return <ProfilePage user={profileUser} loggedInUser={user} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+        return <ProfilePage user={profileUser} loggedInUser={user} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
     }
     
     if (activeView === 'explore') {
-        return <ExplorePage images={images} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+        return <ExplorePage images={images} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
     }
 
-    return <ImageGrid images={shuffledImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} />;
+    return <ImageGrid images={shuffledImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
   }
 
 
@@ -160,6 +198,8 @@ const App: React.FC = () => {
             activeView={activeView}
             setView={handleSetView}
             onViewProfile={handleViewProfile}
+            notifications={notifications}
+            onImageClick={handleImageClick}
           />
       </div>
 
@@ -176,6 +216,7 @@ const App: React.FC = () => {
         activeView={activeView}
         setView={handleSetView}
         onViewProfile={handleViewProfile}
+        notifications={notifications}
       />
       
       {isUploadModalOpen && user && (
@@ -196,6 +237,7 @@ const App: React.FC = () => {
           onViewProfile={handleViewProfile}
           onImageUpdate={handleImageUpdate}
           onImageDelete={handleImageDelete}
+          onLikeToggle={handleLikeToggle}
         />
       )}
     </div>
