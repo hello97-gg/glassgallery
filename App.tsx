@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
@@ -15,6 +15,7 @@ import Spinner from './components/Spinner';
 import ExplorePage from './components/ExplorePage';
 import ProfilePage from './components/ProfilePage';
 import { MobileNotificationsModal } from './components/Notifications';
+import FullScreenDropzone from './components/FullScreenDropzone';
 
 // Fisher-Yates shuffle utility
 const shuffle = (array: any[]) => {
@@ -59,6 +60,12 @@ const App: React.FC = () => {
   const [lastView, setLastView] = useState<'home' | 'explore'>('home');
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  
+  // State for full-screen drag and drop
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+  const dragCounter = useRef(0);
+
 
   useEffect(() => {
     // Fix: Use v8 compat syntax for onAuthStateChanged.
@@ -140,6 +147,70 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll', throttledScrollHandler);
   }, [loadMoreImages, activeView]);
 
+  // --- Full-screen drag-and-drop handlers ---
+  const handleDragEnter = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (user && !isUploadModalOpen && !isLoginModalOpen && !selectedImage && e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+        const containsFile = Array.from(e.dataTransfer.items).some(item => item.kind === 'file' && item.type.startsWith('image/'));
+        if (containsFile) {
+            setIsDraggingOver(true);
+        }
+    }
+  }, [user, isUploadModalOpen, isLoginModalOpen, selectedImage]);
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+        setIsDraggingOver(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (user && !isUploadModalOpen && !isLoginModalOpen && !selectedImage) {
+        e.dataTransfer!.dropEffect = 'copy';
+    } else {
+        e.dataTransfer!.dropEffect = 'none';
+    }
+  }, [user, isUploadModalOpen, isLoginModalOpen, selectedImage]);
+
+  const handleDrop = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    dragCounter.current = 0;
+
+    if (user && !isUploadModalOpen && !isLoginModalOpen && !selectedImage) {
+        if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                setDroppedFile(file);
+                setUploadModalOpen(true);
+            }
+            e.dataTransfer.clearData();
+        }
+    }
+  }, [user, isUploadModalOpen, isLoginModalOpen, selectedImage]);
+
+  useEffect(() => {
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
+
+    return () => {
+        window.removeEventListener('dragenter', handleDragEnter);
+        window.removeEventListener('dragleave', handleDragLeave);
+        window.removeEventListener('dragover', handleDragOver);
+        window.removeEventListener('drop', handleDrop);
+    };
+  }, [handleDragEnter, handleDragLeave, handleDragOver, handleDrop]);
+
   const handleImageClick = (image: ImageMeta) => {
     setSelectedImage(image);
   };
@@ -155,6 +226,7 @@ const App: React.FC = () => {
 
   const handleUploadSuccess = () => {
     setUploadModalOpen(false);
+    setDroppedFile(null);
     if (activeView !== 'profile') {
         setActiveView('home');
     }
@@ -284,11 +356,17 @@ const App: React.FC = () => {
         onNotificationsClick={() => setNotificationsPanelOpen(true)}
       />
       
+      {isDraggingOver && <FullScreenDropzone />}
+
       {isUploadModalOpen && user && (
         <UploadModal
           user={user}
-          onClose={() => setUploadModalOpen(false)}
+          onClose={() => {
+              setUploadModalOpen(false);
+              setDroppedFile(null);
+          }}
           onUploadSuccess={handleUploadSuccess}
+          initialFile={droppedFile}
         />
       )}
 

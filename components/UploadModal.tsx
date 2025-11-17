@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { uploadToCatbox } from '../services/catboxService';
 import { addImageToFirestore } from '../services/firestoreService';
@@ -11,9 +11,10 @@ interface UploadModalProps {
   user: User;
   onClose: () => void;
   onUploadSuccess: () => void;
+  initialFile?: File | null;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSuccess }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSuccess, initialFile = null }) => {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [license, setLicense] = useState<string>(LICENSES[0].value);
@@ -62,6 +63,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
         setError("Please select a valid image file.");
     }
   };
+  
+  useEffect(() => {
+    if (initialFile) {
+        handleFileSelect(initialFile);
+    }
+  }, [initialFile]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
