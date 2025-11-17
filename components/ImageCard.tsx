@@ -26,7 +26,7 @@ const HeartIconOutline = () => (
 const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfile, onLikeToggle, className = '' }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   
-  const combinedClassName = `group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid min-h-[150px] ${className}`;
+  const combinedClassName = `group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid ${className}`;
   const hasLiked = user && image.likedBy?.includes(user.uid);
 
   const handleProfileClick = (e: React.MouseEvent) => {
@@ -51,7 +51,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfi
       <img
         src={image.imageUrl}
         alt="User upload"
-        className={`w-full h-auto object-cover transition-opacity duration-500 ease-in-out ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`w-full h-auto min-h-[150px] object-cover transition-opacity duration-500 ease-in-out ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
         loading="lazy"
         onLoad={() => setIsLoaded(true)}
       />
