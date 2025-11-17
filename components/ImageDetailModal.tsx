@@ -24,24 +24,29 @@ const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const AttributionModal: React.FC<{ image: ImageMeta, onClose: () => void }> = ({ image, onClose }) => {
   const [copied, setCopied] = useState(false);
 
-  let sourceText = 'Glass Gallery';
-  let sourceUrl = image.imageUrl;
+  const hasOriginalWork = !!image.originalWorkUrl;
+  let attributionText = '';
+  let copyText = '';
+  let shoutoutText = '';
 
-  if (image.originalWorkUrl) {
-    try {
-      // Extract hostname for display, e.g., "unsplash.com"
-      const hostname = new URL(image.originalWorkUrl).hostname;
-      sourceText = hostname.replace(/^www\./, '');
-      sourceUrl = image.originalWorkUrl;
-    } catch (e) {
-      // Fallback if URL is malformed
-      sourceText = 'Original Source';
-      sourceUrl = image.originalWorkUrl;
-    }
+  if (hasOriginalWork) {
+      let sourceText = 'the original source';
+      try {
+          // Extract hostname for display, e.g., "unsplash.com"
+          const hostname = new URL(image.originalWorkUrl!).hostname;
+          sourceText = hostname.replace(/^www\./, '');
+      } catch (e) { /* Fallback is fine */ }
+      
+      shoutoutText = `Give credit to the original creator by copying the source link below.`;
+      attributionText = `Image from ${sourceText}`;
+      copyText = `Image source: ${image.originalWorkUrl}`;
+
+  } else {
+      shoutoutText = `Give a shoutout to ${image.uploaderName} on social or copy the text below to attribute.`;
+      attributionText = `Photo by ${image.uploaderName} on Glass Gallery`;
+      copyText = `Photo by ${image.uploaderName} on Glass Gallery (${image.imageUrl})`;
   }
 
-  const attributionText = `Photo by ${image.uploaderName} on ${sourceText}`;
-  const copyText = `Photo by ${image.uploaderName} on ${sourceText} (${sourceUrl})`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(copyText);
@@ -60,7 +65,7 @@ const AttributionModal: React.FC<{ image: ImageMeta, onClose: () => void }> = ({
           <img src={image.imageUrl} alt="thumbnail" className="w-20 h-20 object-cover rounded-lg flex-shrink-0" />
           <div className="flex-grow">
             <h2 className="text-xl font-bold text-primary">Say thanks!</h2>
-            <p className="text-sm text-secondary mt-1">Give a shoutout to {image.uploaderName} on social or copy the text below to attribute.</p>
+            <p className="text-sm text-secondary mt-1">{shoutoutText}</p>
           </div>
         </div>
         
