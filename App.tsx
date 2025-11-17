@@ -163,6 +163,7 @@ const App: React.FC = () => {
         await toggleImageLike(image, user);
     } catch (error) {
         console.error("Failed to toggle like:", error);
+        alert("Action failed: Could not update like status. Please check your connection or permissions and try again.");
         // Revert optimistic update on failure
         handleImageUpdate(image); 
     }
