@@ -74,7 +74,7 @@ const NotificationsList: React.FC<NotificationProps> = ({ notifications, onClose
 // For desktop sidebar popover
 const NotificationsPanel: React.FC<NotificationProps> = ({ notifications, onClose, onImageClick }) => {
     return (
-        <div className="absolute left-0 bottom-full mb-2 w-80 animate-fade-in">
+        <div className="absolute left-full top-0 ml-4 w-96 animate-fade-in z-30">
            <NotificationsList notifications={notifications} onClose={onClose} onImageClick={onImageClick} />
         </div>
     );
