@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
 import { uploadToCatbox } from '../services/catboxService';
@@ -7,8 +6,6 @@ import { LICENSES, FLAGS } from '../constants';
 import Button from './Button';
 import Spinner from './Spinner';
 import imageCompression from 'browser-image-compression';
-import { GoogleGenAI, Modality } from '@google/genai';
-
 
 interface UploadModalProps {
   user: User;
@@ -17,8 +14,8 @@ interface UploadModalProps {
 }
 
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSuccess }) => {
-  const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [license, setLicense] = useState<string>(LICENSES[0].value);
   const [licenseUrl, setLicenseUrl] = useState('');
   const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
@@ -28,13 +25,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileSelect = async (selectedFiles: FileList | null) => {
-    if (selectedFiles && selectedFiles.length > 0) {
+  const handleFileSelect = async (selectedFile: File) => {
+    if (selectedFile && selectedFile.type.startsWith('image/')) {
         setIsLoading(true);
-        setLoadingMessage(`Compressing ${selectedFiles.length} image(s)...`);
+        setLoadingMessage('Compressing image...');
         setError(null);
-        setPreviews([]);
-        setFiles([]);
+        setPreview(null);
+        setFile(null);
 
         try {
             const options = {
@@ -43,48 +40,34 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                 useWebWorker: true,
             };
             
-            const compressedFilesPromises = Array.from(selectedFiles).map(file => {
-                if (!file.type.startsWith('image/')) {
-                    throw new Error(`File "${file.name}" is not a valid image.`);
-                }
-                return imageCompression(file, options);
-            });
-            const compressedFiles = await Promise.all(compressedFilesPromises);
+            const compressedFile = await imageCompression(selectedFile, options);
             
-            setFiles(compressedFiles);
-            
-            const previewPromises = compressedFiles.map(file => {
-                return new Promise<string>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-            });
-
-            const newPreviews = await Promise.all(previewPromises);
-            setPreviews(newPreviews);
-            setIsLoading(false);
+            setFile(compressedFile);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const previewUrl = reader.result as string;
+                setPreview(previewUrl);
+                setIsLoading(false);
+            };
+            reader.readAsDataURL(compressedFile);
 
         } catch (err) {
-            console.error("Image processing error:", err);
-            const errorMessage = err instanceof Error ? err.message : "Could not process the image(s). Please try different ones.";
-            setError(errorMessage);
-            setFiles([]);
-            setPreviews([]);
+            console.error("Image compression error:", err);
+            setError("Could not process the image. Please try a different one.");
+            setFile(null);
+            setPreview(null);
             setIsLoading(false);
         }
-    } else if (selectedFiles && selectedFiles.length === 0) {
-      // Do nothing if no files are selected (e.g., user cancels file picker)
-    }
-     else {
-        setError("Please select at least one valid image file.");
+    } else {
+        setError("Please select a valid image file.");
     }
   };
 
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFileSelect(e.target.files);
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      handleFileSelect(selectedFile);
+    }
   };
   
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -107,7 +90,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     setIsDragging(false);
     if (isLoading) return;
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileSelect(e.dataTransfer.files);
+      handleFileSelect(e.dataTransfer.files[0]);
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
       if (fileInput) {
         fileInput.files = e.dataTransfer.files;
@@ -122,90 +105,25 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     );
   };
 
-  const fileToGenerativePart = async (file: File) => {
-      const base64EncodedDataPromise = new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.readAsDataURL(file);
-      });
-      return {
-          inlineData: {
-              mimeType: file.type,
-              data: await base64EncodedDataPromise as string,
-          },
-      };
-  };
-
-  function dataURLtoFile(dataurl: string, filename: string): File {
-      const arr = dataurl.split(',');
-      const mimeMatch = arr[0].match(/:(.*?);/);
-      if (!mimeMatch) {
-          throw new Error('Invalid data URL');
-      }
-      const mime = mimeMatch[1];
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while(n--){
-          u8arr[n] = bstr.charCodeAt(n);
-      }
-      return new File([u8arr], filename, {type:mime});
-  }
-
-  const handleCollageSubmit = async () => {
-    setIsLoading(true);
-    setLoadingMessage('Generating collage with AI...');
-    setError(null);
-
-    try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const imageParts = await Promise.all(files.map(file => fileToGenerativePart(file)));
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: {
-                parts: [
-                    { text: 'Create an artistic, seamless photo collage from the following images. The final result should be a single beautiful image that blends the inputs harmoniously.' },
-                    ...imageParts
-                ]
-            },
-            config: {
-                responseModalities: [Modality.IMAGE],
-            }
-        });
-
-        const collagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (!collagePart?.inlineData) {
-            throw new Error('AI did not return a valid image. Please try again.');
-        }
-
-        const { data: base64Data, mimeType } = collagePart.inlineData;
-        const collageFile = dataURLtoFile(`data:${mimeType};base64,${base64Data}`, 'ai-collage.png');
-        
-        setLoadingMessage('Uploading collage...');
-        
-        const { url: imageUrl } = await uploadToCatbox(collageFile);
-        
-        const finalFlags = selectedFlags.includes('Collage') ? selectedFlags : [...selectedFlags, 'Collage'];
-        
-        await addImageToFirestore(user, imageUrl, license, finalFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '');
-        
-        onUploadSuccess();
-
-    } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Collage generation failed. Please try again.';
-        setError(errorMessage);
-        console.error(err);
-        setIsLoading(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!file) {
+      setError("Please select an image to upload.");
+      return;
     }
-  };
+    if (selectedFlags.length === 0) {
+      setError("Please select at least one tag for the image.");
+      return;
+    }
+    if (!user) return;
 
-  const handleSingleUploadSubmit = async () => {
+
     setIsLoading(true);
     setLoadingMessage('Uploading image...');
     setError(null);
     try {
-      const { url: imageUrl } = await uploadToCatbox(files[0]);
+      const { url: imageUrl } = await uploadToCatbox(file);
       await addImageToFirestore(user, imageUrl, license, selectedFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '');
       onUploadSuccess();
     } catch (err) {
@@ -216,84 +134,48 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     }
   };
 
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (files.length === 0) {
-      setError("Please select an image to upload.");
-      return;
-    }
-    if (selectedFlags.length === 0) {
-      setError("Please select at least one tag for the image.");
-      return;
-    }
-    if (!user) return;
-
-    if (files.length > 1) {
-        await handleCollageSubmit();
-    } else {
-        await handleSingleUploadSubmit();
-    }
-  };
-
   const renderUploadState = () => {
       if (isLoading) {
           return (
-             <div className="flex flex-col items-center justify-center text-center h-full">
+             <div className="flex flex-col items-center text-center">
                 <Spinner />
                 <p className="mt-2 text-sm text-secondary">{loadingMessage}</p>
             </div>
           );
       }
-       if (previews.length > 0) {
-           return (
-            <div className="w-full h-full p-2 overflow-y-auto bg-background/50 rounded-md">
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                    {previews.map((src, index) => (
-                        <div key={index} className="aspect-square bg-surface rounded overflow-hidden">
-                            <img src={src} alt={`Preview ${index + 1}`} className="w-full h-full object-cover"/>
-                        </div>
-                    ))}
-                </div>
-            </div>
-           );
+       if (preview) {
+           return <img src={preview} alt="Preview" className="max-h-full rounded-md object-contain" />;
        }
 
        return (
-            <div className="flex flex-col items-center justify-center h-full">
-                <div className="space-y-1 text-center">
-                    <svg className="mx-auto h-12 w-12 text-secondary/50" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                    <p className="text-sm text-secondary">Drag 'n' drop or click to upload</p>
-                    <p className="text-xs text-secondary/70">Select multiple files to create a collage</p>
-                </div>
+            <div className="space-y-1 text-center">
+                <svg className="mx-auto h-12 w-12 text-secondary/50" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                <p className="text-sm text-secondary">Drag 'n' drop or click to upload</p>
             </div>
        );
   }
-
-  const submitButtonText = files.length > 1 ? 'Generate Collage & Upload' : 'Upload';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-primary">Upload Image(s)</h2>
+                <h2 className="text-xl font-bold text-primary">Upload an Image</h2>
                 <button onClick={onClose} className="text-secondary hover:text-primary transition-colors text-3xl leading-none">&times;</button>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-secondary mb-2">Image File(s)</label>
+                    <label className="block text-sm font-medium text-secondary mb-2">Image File</label>
                     <label 
                         htmlFor="file-upload"
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`mt-1 flex justify-center items-center h-48 px-2 pt-2 pb-2 border-2 border-border border-dashed rounded-md transition-colors ${isLoading ? '' : 'cursor-pointer'} ${isDragging ? 'border-accent bg-accent/10' : 'hover:border-secondary/50'}`}
+                        className={`mt-1 flex justify-center items-center h-48 px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-md transition-colors ${isLoading ? '' : 'cursor-pointer'} ${isDragging ? 'border-accent bg-accent/10' : 'hover:border-secondary/50'}`}
                     >
                         {renderUploadState()}
-                        <input id="file-upload" name="file-upload" type="file" multiple className="sr-only" onChange={handleFileChange} accept="image/*" disabled={isLoading} />
+                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" disabled={isLoading} />
                     </label>
                 </div>
 
@@ -314,7 +196,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                 <div>
                     <label className="block text-sm font-medium text-secondary">Tags (select at least one)</label>
                     <div className="mt-2 flex flex-wrap gap-2">
-                        {FLAGS.filter(f => f !== 'Collage').map(flag => ( // Don't show Collage as a user-selectable option
+                        {FLAGS.map(flag => (
                             <button key={flag} type="button" onClick={() => handleFlagToggle(flag)} className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedFlags.includes(flag) ? 'bg-accent text-primary' : 'bg-border text-secondary hover:bg-border/80'}`}>
                                 {flag}
                             </button>
@@ -331,8 +213,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
 
                 <div className="flex justify-end gap-3 pt-2">
                     <Button type="button" onClick={onClose} variant="secondary">Cancel</Button>
-                    <Button type="submit" disabled={isLoading || files.length === 0 || selectedFlags.length === 0}>
-                        {isLoading ? <Spinner /> : submitButtonText}
+                    <Button type="submit" disabled={isLoading || !file || selectedFlags.length === 0}>
+                        {isLoading ? <Spinner /> : 'Upload'}
                     </Button>
                 </div>
             </form>

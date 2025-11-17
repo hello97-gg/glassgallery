@@ -18,6 +18,5 @@ export const FLAGS: string[] = [
   'Abstract',
   'Minimalist',
   'Fantasy',
-  'Sci-Fi',
-  'Collage'
+  'Sci-Fi'
 ];
