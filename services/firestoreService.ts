@@ -90,40 +90,50 @@ export const deleteImageFromFirestore = async (imageId: string) => {
 
 export const toggleImageLike = async (image: ImageMeta, user: User) => {
     const imageRef = db.collection("images").doc(image.id);
-    const hasLiked = image.likedBy?.includes(user.uid);
 
-    if (hasLiked) {
-        // Unlike
-        await imageRef.update({
-            likedBy: firebase.firestore.FieldValue.arrayRemove(user.uid),
-            likeCount: firebase.firestore.FieldValue.increment(-1),
-        });
-        // NOTE: The logic to delete the corresponding notification has been removed.
-        // The user who unlikes (the actor) does not have permission to delete a 
-        // notification that belongs to the image owner (the recipient).
-        // This was the primary source of the "insufficient permissions" error.
-
-    } else {
-        // Like
-        await imageRef.update({
-            likedBy: firebase.firestore.FieldValue.arrayUnion(user.uid),
-            likeCount: firebase.firestore.FieldValue.increment(1),
-        });
-        // Create notification, but not for liking your own image
-        if (user.uid !== image.uploaderUid) {
-            await db.collection("notifications").add({
-                recipientUid: image.uploaderUid,
-                actorUid: user.uid,
-                actorName: user.displayName || 'Someone',
-                actorPhotoURL: user.photoURL || '',
-                type: 'like',
-                imageId: image.id,
-                imageUrl: image.imageUrl,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                read: false,
-            });
+    return db.runTransaction(async (transaction) => {
+        const imageDoc = await transaction.get(imageRef);
+        if (!imageDoc.exists) {
+            throw new Error("Image does not exist!");
         }
-    }
+
+        const data = imageDoc.data() as ImageMeta;
+        const likedBy = data.likedBy || [];
+        const hasLiked = likedBy.includes(user.uid);
+        
+        let newLikedBy;
+        
+        if (hasLiked) {
+            // Unlike: filter out the user's UID
+            newLikedBy = likedBy.filter(uid => uid !== user.uid);
+        } else {
+            // Like: add the user's UID
+            newLikedBy = [...likedBy, user.uid];
+            
+            // Create notification, but not for liking your own image.
+            if (user.uid !== data.uploaderUid) {
+                const notificationRef = db.collection("notifications").doc();
+                transaction.set(notificationRef, {
+                    recipientUid: data.uploaderUid,
+                    actorUid: user.uid,
+                    actorName: user.displayName || 'Someone',
+                    actorPhotoURL: user.photoURL || '',
+                    type: 'like',
+                    imageId: image.id,
+                    imageUrl: data.imageUrl,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    read: false,
+                });
+            }
+        }
+        
+        // Atomically update the image with the computed correct values.
+        // This ensures the likeCount always matches the likedBy array size, satisfying security rules.
+        transaction.update(imageRef, {
+            likedBy: newLikedBy,
+            likeCount: newLikedBy.length,
+        });
+    });
 };
 
 export const getNotificationsForUser = (userId: string, callback: (notifications: Notification[]) => void): (() => void) => {
