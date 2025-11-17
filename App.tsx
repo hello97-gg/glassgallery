@@ -14,6 +14,7 @@ import ImageDetailModal from './components/ImageDetailModal';
 import Spinner from './components/Spinner';
 import ExplorePage from './components/ExplorePage';
 import ProfilePage from './components/ProfilePage';
+import { MobileNotificationsModal } from './components/Notifications';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -24,6 +25,7 @@ const App: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<ImageMeta | null>(null);
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+  const [isNotificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
   
   const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile' | 'notifications'>('home');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
@@ -83,6 +85,17 @@ const App: React.FC = () => {
 
   const handleImageClick = (image: ImageMeta) => {
     setSelectedImage(image);
+  };
+  
+  const handleImageClickFromNotification = (partialImage: Partial<ImageMeta>) => {
+    // Notifications only contain partial data. Find the full image object.
+    const fullImage = images.find(i => i.id === partialImage.id) || shuffledImages.find(i => i.id === partialImage.id);
+    if (fullImage) {
+        setSelectedImage(fullImage);
+    } else {
+        // Fallback or error handling if image not found in current state
+        console.warn("Could not find full image data for notification.", partialImage);
+    }
   };
 
   const handleUploadSuccess = () => {
@@ -201,7 +214,7 @@ const App: React.FC = () => {
             setView={handleSetView}
             onViewProfile={handleViewProfile}
             notifications={notifications}
-            onImageClick={handleImageClick}
+            onImageClick={handleImageClickFromNotification}
           />
       </div>
 
@@ -219,6 +232,7 @@ const App: React.FC = () => {
         setView={handleSetView}
         onViewProfile={handleViewProfile}
         notifications={notifications}
+        onNotificationsClick={() => setNotificationsPanelOpen(true)}
       />
       
       {isUploadModalOpen && user && (
@@ -230,6 +244,17 @@ const App: React.FC = () => {
       )}
 
       {isLoginModalOpen && <LoginModal onClose={() => setLoginModalOpen(false)} />}
+      
+      {isNotificationsPanelOpen && user && (
+        <MobileNotificationsModal
+            notifications={notifications}
+            onClose={() => setNotificationsPanelOpen(false)}
+            onImageClick={(image) => {
+                setNotificationsPanelOpen(false);
+                handleImageClickFromNotification(image);
+            }}
+        />
+      )}
 
       {selectedImage && (
         <ImageDetailModal

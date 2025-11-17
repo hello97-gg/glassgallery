@@ -3,10 +3,10 @@ import type { Notification, ImageMeta } from '../types';
 import { markNotificationsAsRead } from '../services/firestoreService';
 import Button from './Button';
 
-interface NotificationBellProps {
+interface NotificationProps {
   notifications: Notification[];
-  onImageClick: (image: ImageMeta) => void;
-  isSidebar?: boolean;
+  onImageClick: (image: Partial<ImageMeta>) => void;
+  onClose: () => void;
 }
 
 const timeAgo = (date: Date): string => {
@@ -24,11 +24,8 @@ const timeAgo = (date: Date): string => {
   return Math.floor(seconds) + "s";
 };
 
-const NotificationsPanel: React.FC<{
-    notifications: Notification[];
-    onClose: () => void;
-    onImageClick: (image: ImageMeta) => void;
-}> = ({ notifications, onClose, onImageClick }) => {
+// Reusable component for the list of notifications
+const NotificationsList: React.FC<NotificationProps> = ({ notifications, onClose, onImageClick }) => {
     const handleMarkAllRead = () => {
         const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
         markNotificationsAsRead(unreadIds);
@@ -38,47 +35,68 @@ const NotificationsPanel: React.FC<{
         if (!notification.read) {
             markNotificationsAsRead([notification.id]);
         }
-        // This is a bit of a hack as we don't have the full ImageMeta object.
-        // The parent App component will fetch the full data when opening the modal.
-        // @ts-ignore
         onImageClick({ id: notification.imageId, imageUrl: notification.imageUrl });
         onClose();
     };
-
+    
     return (
-        <div className="absolute left-0 bottom-full mb-2 w-80 bg-surface border border-border rounded-lg shadow-xl z-20 overflow-hidden animate-fade-in">
-           <div className="p-3 border-b border-border flex justify-between items-center">
-               <h3 className="font-semibold text-primary">Notifications</h3>
-               {notifications.some(n => !n.read) && (
-                   <Button onClick={handleMarkAllRead} variant="secondary" size="sm">Mark all as read</Button>
-               )}
-           </div>
-           <div className="max-h-96 overflow-y-auto">
-               {notifications.length > 0 ? (
-                   notifications.map(n => (
-                       <div 
-                           key={n.id} 
-                           onClick={() => handleNotificationClick(n)}
-                           className={`p-3 flex items-start gap-3 border-b border-border last:border-b-0 cursor-pointer transition-colors ${n.read ? 'hover:bg-border/50' : 'bg-accent/10 hover:bg-accent/20'}`}
-                        >
-                           <img src={n.actorPhotoURL} alt={n.actorName} className="w-8 h-8 rounded-full flex-shrink-0" />
-                           <div className="flex-grow text-sm">
-                               <p className="text-primary"><span className="font-semibold">{n.actorName}</span> liked your image.</p>
-                               <p className="text-xs text-secondary">{timeAgo(n.createdAt.toDate())} ago</p>
-                           </div>
-                           <img src={n.imageUrl} alt="liked image" className="w-10 h-10 rounded object-cover flex-shrink-0" />
-                       </div>
-                   ))
-               ) : (
-                   <p className="p-8 text-center text-sm text-secondary">You have no notifications yet.</p>
-               )}
-           </div>
+      <div className="w-full max-w-sm bg-surface border border-border rounded-lg shadow-xl z-20 overflow-hidden flex flex-col">
+        <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0">
+          <h3 className="font-semibold text-primary">Notifications</h3>
+          {notifications.some(n => !n.read) && (
+            <Button onClick={handleMarkAllRead} variant="secondary" size="sm">Mark all as read</Button>
+          )}
+        </div>
+        <div className="flex-grow overflow-y-auto">
+          {notifications.length > 0 ? (
+            notifications.map(n => (
+              <div
+                key={n.id}
+                onClick={() => handleNotificationClick(n)}
+                className={`p-3 flex items-start gap-3 border-b border-border last:border-b-0 cursor-pointer transition-colors ${n.read ? 'hover:bg-border/50' : 'bg-accent/10 hover:bg-accent/20'}`}
+              >
+                <img src={n.actorPhotoURL} alt={n.actorName} className="w-8 h-8 rounded-full flex-shrink-0" />
+                <div className="flex-grow text-sm">
+                  <p className="text-primary"><span className="font-semibold">{n.actorName}</span> liked your image.</p>
+                  <p className="text-xs text-secondary">{timeAgo(n.createdAt.toDate())} ago</p>
+                </div>
+                <img src={n.imageUrl} alt="liked image" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+              </div>
+            ))
+          ) : (
+            <p className="p-8 text-center text-sm text-secondary">You have no notifications yet.</p>
+          )}
+        </div>
+      </div>
+    )
+}
+
+// For desktop sidebar popover
+const NotificationsPanel: React.FC<NotificationProps> = ({ notifications, onClose, onImageClick }) => {
+    return (
+        <div className="absolute left-0 bottom-full mb-2 w-80 animate-fade-in">
+           <NotificationsList notifications={notifications} onClose={onClose} onImageClick={onImageClick} />
         </div>
     );
 };
 
+// For mobile full-screen modal
+export const MobileNotificationsModal: React.FC<NotificationProps> = ({ notifications, onClose, onImageClick }) => {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm md:hidden animate-fade-in" onClick={onClose}>
+            <div className="max-h-[80vh] flex" onClick={(e) => e.stopPropagation()}>
+                <NotificationsList notifications={notifications} onClose={onClose} onImageClick={onImageClick} />
+            </div>
+        </div>
+    )
+}
 
-export const NotificationBell: React.FC<NotificationBellProps> = ({ notifications, onImageClick, isSidebar = false }) => {
+// The bell icon component itself
+export const NotificationBell: React.FC<{
+  notifications: Notification[];
+  onImageClick: (image: Partial<ImageMeta>) => void;
+  isSidebar?: boolean;
+}> = ({ notifications, onImageClick, isSidebar = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
     const ref = useRef<HTMLDivElement>(null);
@@ -118,6 +136,5 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ notification
         );
     }
     
-    // Placeholder for non-sidebar implementation (e.g., mobile)
     return null;
 };
