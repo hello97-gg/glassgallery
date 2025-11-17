@@ -91,7 +91,13 @@ export const deleteImageFromFirestore = async (imageId: string) => {
 export const toggleImageLike = async (image: ImageMeta, user: User) => {
     const imageRef = db.collection("images").doc(image.id);
 
-    return db.runTransaction(async (transaction) => {
+    // This object will hold the result of the transaction to be used later.
+    let transactionResult: { wasLike: boolean, uploaderUid: string } | null = null;
+
+    // Phase 1: Atomically update the like count and array in a transaction.
+    // This keeps the transaction simple, focusing only on one document to avoid
+    // complex security rule failures that can occur with multi-document writes.
+    await db.runTransaction(async (transaction) => {
         const imageDoc = await transaction.get(imageRef);
         if (!imageDoc.exists) {
             throw new Error("Image does not exist!");
@@ -102,41 +108,44 @@ export const toggleImageLike = async (image: ImageMeta, user: User) => {
         const hasLiked = likedBy.includes(user.uid);
         
         let newLikedBy;
-        
         if (hasLiked) {
-            // Unlike: filter out the user's UID
+            // Unlike action
             newLikedBy = likedBy.filter(uid => uid !== user.uid);
+            transactionResult = { wasLike: false, uploaderUid: data.uploaderUid };
         } else {
-            // Like: add the user's UID
+            // Like action
             newLikedBy = [...likedBy, user.uid];
-            
-            // Temporarily removed notification sending to fix transaction issues.
-            /*
-            // Create notification, but not for liking your own image.
-            if (user.uid !== data.uploaderUid) {
-                const notificationRef = db.collection("notifications").doc();
-                transaction.set(notificationRef, {
-                    recipientUid: data.uploaderUid,
-                    actorUid: user.uid,
-                    actorName: user.displayName || 'Someone',
-                    actorPhotoURL: user.photoURL || '',
-                    type: 'like',
-                    imageId: image.id,
-                    imageUrl: data.imageUrl,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    read: false,
-                });
-            }
-            */
+            transactionResult = { wasLike: true, uploaderUid: data.uploaderUid };
         }
         
         // Atomically update the image with the computed correct values.
-        // This ensures the likeCount always matches the likedBy array size, satisfying security rules.
         transaction.update(imageRef, {
             likedBy: newLikedBy,
             likeCount: newLikedBy.length,
         });
     });
+
+    // Phase 2: If the transaction resulted in a "like", create a notification.
+    // This runs outside the transaction. It's a common pattern to ensure the core
+    // action succeeds without being blocked by secondary operations like notifications.
+    if (transactionResult?.wasLike && user.uid !== transactionResult.uploaderUid) {
+        try {
+            await db.collection("notifications").add({
+                recipientUid: transactionResult.uploaderUid,
+                actorUid: user.uid,
+                actorName: user.displayName || 'Someone',
+                actorPhotoURL: user.photoURL || '',
+                type: 'like',
+                imageId: image.id,
+                imageUrl: image.imageUrl,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false,
+            });
+        } catch (notificationError) {
+            // Log the error but don't re-throw it, as the main "like" action was successful.
+            console.error("Failed to create like notification:", notificationError);
+        }
+    }
 };
 
 export const getNotificationsForUser = (userId: string, callback: (notifications: Notification[]) => void): (() => void) => {
