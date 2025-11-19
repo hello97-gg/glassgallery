@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { uploadToCatbox } from '../services/catboxService';
@@ -17,6 +18,8 @@ interface UploadModalProps {
 const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSuccess, initialFile = null }) => {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [license, setLicense] = useState<string>(LICENSES[0].value);
   const [licenseUrl, setLicenseUrl] = useState('');
   const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
@@ -131,7 +134,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     setError(null);
     try {
       const { url: imageUrl } = await uploadToCatbox(file);
-      await addImageToFirestore(user, imageUrl, license, selectedFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '');
+      await addImageToFirestore(user, imageUrl, title, description, license, selectedFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '');
       onUploadSuccess();
     } catch (err) {
       setError('Upload failed. Please try again.');
@@ -186,11 +189,22 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                     </label>
                 </div>
 
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                   <div>
+                      <label htmlFor="title" className="block text-sm font-medium text-secondary">Title (Optional)</label>
+                      <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="My Amazing Image" />
+                   </div>
+                   <div>
+                      <label htmlFor="license" className="block text-sm font-medium text-secondary">License</label>
+                      <select id="license" value={license} onChange={(e) => setLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-primary">
+                          {LICENSES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                      </select>
+                   </div>
+                </div>
+
                 <div>
-                    <label htmlFor="license" className="block text-sm font-medium text-secondary">License</label>
-                    <select id="license" value={license} onChange={(e) => setLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-primary">
-                        {LICENSES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                    </select>
+                    <label htmlFor="description" className="block text-sm font-medium text-secondary">Description (Optional)</label>
+                    <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="Tell us about your image..." />
                 </div>
                 
                 {license === 'Other' && (

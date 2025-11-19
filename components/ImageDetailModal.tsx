@@ -108,6 +108,8 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const [currentImage, setCurrentImage] = useState<ImageMeta>(image);
   
   const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(image.title || '');
+  const [editedDescription, setEditedDescription] = useState(image.description || '');
   const [editedLicense, setEditedLicense] = useState(image.license);
   const [editedLicenseUrl, setEditedLicenseUrl] = useState(image.licenseUrl || '');
   const [editedFlags, setEditedFlags] = useState<string[]>(image.flags || []);
@@ -145,10 +147,19 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const handleEditToggle = () => {
     if (isEditing) {
       // Cancel edit
+      setEditedTitle(currentImage.title || '');
+      setEditedDescription(currentImage.description || '');
       setEditedLicense(currentImage.license);
       setEditedLicenseUrl(currentImage.licenseUrl || '');
       setEditedFlags(currentImage.flags || []);
       setError(null);
+    } else {
+      // Start edit - sync with current values
+      setEditedTitle(currentImage.title || '');
+      setEditedDescription(currentImage.description || '');
+      setEditedLicense(currentImage.license);
+      setEditedLicenseUrl(currentImage.licenseUrl || '');
+      setEditedFlags(currentImage.flags || []);
     }
     setIsEditing(!isEditing);
   };
@@ -168,6 +179,8 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     setIsSaving(true);
     try {
       const updates = {
+        title: editedTitle,
+        description: editedDescription,
         license: editedLicense,
         flags: editedFlags,
         licenseUrl: editedLicense === 'Other' ? editedLicenseUrl : '',
@@ -239,6 +252,14 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
       return (
         <div className="space-y-4">
           <div>
+             <label htmlFor="title-edit" className="font-semibold mb-2 text-secondary text-sm block">Title</label>
+             <input type="text" id="title-edit" value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent text-sm" />
+          </div>
+          <div>
+             <label htmlFor="desc-edit" className="font-semibold mb-2 text-secondary text-sm block">Description</label>
+             <textarea id="desc-edit" value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} rows={3} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent text-sm" />
+          </div>
+          <div>
             <label htmlFor="license-edit" className="font-semibold mb-2 text-secondary text-sm block">License</label>
             <select id="license-edit" value={editedLicense} onChange={(e) => setEditedLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-primary">
               {LICENSES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
@@ -271,6 +292,13 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
 
     return (
       <div className="space-y-4">
+         {(currentImage.title || currentImage.description) && (
+            <div className="mb-4">
+                 {currentImage.title && <h1 className="text-2xl font-bold text-primary mb-2">{currentImage.title}</h1>}
+                 {currentImage.description && <p className="text-primary/80 text-sm whitespace-pre-wrap leading-relaxed">{currentImage.description}</p>}
+            </div>
+         )}
+
         <div>
             <h4 className="font-semibold mb-2 text-secondary text-sm">Downloads</h4>
             <InfoChip>{(currentImage.downloadCount || 0).toLocaleString()}</InfoChip>

@@ -12,6 +12,8 @@ export const PAGE_SIZE = 20; // Increased for better client-side pagination feel
 export const addImageToFirestore = async (
     user: User, 
     imageUrl: string, 
+    title: string,
+    description: string,
     license: string, 
     flags: string[], 
     originalWorkUrl?: string,
@@ -24,6 +26,8 @@ export const addImageToFirestore = async (
             uploaderUid: user.uid,
             uploaderName: user.displayName || 'Anonymous',
             uploaderPhotoURL: user.photoURL || '',
+            title: title || '',
+            description: description || '',
             license,
             licenseUrl: licenseUrl || '',
             flags,
@@ -101,7 +105,7 @@ export const getImagesByUploader = async (uploaderUid: string): Promise<{ images
     }
   };
 
-export const updateImageDetails = async (imageId: string, updates: { license: string; flags: string[]; licenseUrl?: string }) => {
+export const updateImageDetails = async (imageId: string, updates: { title?: string; description?: string; license?: string; flags?: string[]; licenseUrl?: string }) => {
     try {
         const imageRef = db.collection("images").doc(imageId);
         await imageRef.update(updates);
