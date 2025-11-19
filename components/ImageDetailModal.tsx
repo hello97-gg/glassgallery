@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
 import { LICENSES, FLAGS } from '../constants';
@@ -111,6 +111,9 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAttribution, setShowAttribution] = useState(false);
+  
+  const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const lastTap = useRef<number>(0);
 
   const isOwner = user?.uid === image.uploaderUid;
   const hasLiked = user && image.likedBy?.includes(user.uid);
@@ -194,6 +197,20 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     }
   };
 
+  const handleDoubleTap = (e: React.MouseEvent | React.TouchEvent) => {
+      const now = Date.now();
+      const DOUBLE_TAP_DELAY = 300;
+      if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+          // Double tap detected
+          if (!hasLiked) {
+              onLikeToggle(image);
+          }
+          setShowHeartAnimation(true);
+          setTimeout(() => setShowHeartAnimation(false), 800);
+      }
+      lastTap.current = now;
+  };
+
   const renderDetails = () => {
     if (isEditing) {
       return (
@@ -260,8 +277,20 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="md:w-2/3 bg-background flex items-center justify-center p-2 relative group">
-            <img src={image.imageUrl} alt="Detailed view" className="max-w-full max-h-[50vh] md:max-h-[85vh] object-contain rounded-lg" />
+        <div className="md:w-2/3 bg-background flex items-center justify-center p-2 relative group select-none">
+            <img 
+                src={image.imageUrl} 
+                alt="Detailed view" 
+                className="max-w-full max-h-[50vh] md:max-h-[85vh] object-contain rounded-lg touch-manipulation cursor-pointer"
+                onClick={handleDoubleTap}
+            />
+            {showHeartAnimation && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 animate-fade-in">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-32 w-32 text-white drop-shadow-2xl opacity-90" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                    </svg>
+                </div>
+            )}
             <button onClick={handleDownload} title="Download Image" className="absolute top-4 right-4 bg-surface/70 backdrop-blur-sm p-2 rounded-full text-primary hover:bg-surface transition-all opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

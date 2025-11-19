@@ -58,7 +58,8 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfi
         loading="lazy"
         onLoad={() => setIsLoaded(true)}
       />
-      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-between p-3 transition-opacity duration-300 ${isLoaded ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+      {/* Hidden on mobile (md:flex) to avoid sticky hover states */}
+      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent hidden md:flex items-end justify-between p-3 transition-opacity duration-300 ${isLoaded ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
         <button onClick={handleProfileClick} className="flex items-center space-x-2 group/profile hover:scale-105 transition-transform z-10">
             <img 
                 src={image.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${image.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`}
