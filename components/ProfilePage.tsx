@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { User } from 'firebase/auth';
 import type { ProfileUser, ImageMeta } from '../types';
 import { getImagesByUploader, PAGE_SIZE } from '../services/firestoreService';
@@ -83,10 +84,19 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
     return () => window.removeEventListener('scroll', throttledScrollHandler);
   }, [loadMoreUserImages]);
 
+  // Calculate totals
+  const totalLikes = useMemo(() => {
+    return allImages.reduce((sum, img) => sum + (img.likeCount || 0), 0);
+  }, [allImages]);
+
+  const totalDownloads = useMemo(() => {
+    return allImages.reduce((sum, img) => sum + (img.downloadCount || 0), 0);
+  }, [allImages]);
+
   return (
     <div className="animate-fade-in">
-      <div className="mb-8 flex items-center gap-6">
-        <Button onClick={onBack} variant="secondary" size="sm" className="!p-2">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center gap-6">
+        <Button onClick={onBack} variant="secondary" size="sm" className="!p-2 self-start sm:self-auto">
            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
@@ -99,7 +109,21 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
             />
             <div>
                 <h1 className="text-3xl font-bold text-primary">{user.uploaderName}</h1>
-                <p className="text-md text-secondary">{allImages.length} uploads</p>
+                
+                <div className="flex flex-wrap gap-3 mt-2">
+                    <div className="bg-surface border border-border px-3 py-1 rounded-full flex items-center gap-2 text-sm text-secondary">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                         <span className="font-semibold text-primary">{allImages.length}</span> Uploads
+                    </div>
+                    <div className="bg-surface border border-border px-3 py-1 rounded-full flex items-center gap-2 text-sm text-secondary">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                         <span className="font-semibold text-primary">{totalLikes}</span> Likes
+                    </div>
+                    <div className="bg-surface border border-border px-3 py-1 rounded-full flex items-center gap-2 text-sm text-secondary">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                         <span className="font-semibold text-primary">{totalDownloads}</span> Downloads
+                    </div>
+                </div>
             </div>
         </div>
       </div>
