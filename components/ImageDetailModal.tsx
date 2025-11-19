@@ -1,9 +1,9 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
 import { LICENSES, FLAGS } from '../constants';
-import { updateImageDetails, deleteImageFromFirestore, incrementDownloadCount } from '../services/firestoreService';
+import { updateImageDetails, deleteImageFromFirestore, incrementDownloadCount, subscribeToImage } from '../services/firestoreService';
 import Button from './Button';
 import Spinner from './Spinner';
 
@@ -104,6 +104,9 @@ const HeartIconOutline = () => (
 
 
 const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClose, onViewProfile, onImageUpdate, onImageDelete, onLikeToggle }) => {
+  // Use local state to track real-time updates for the modal specifically
+  const [currentImage, setCurrentImage] = useState<ImageMeta>(image);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [editedLicense, setEditedLicense] = useState(image.license);
   const [editedLicenseUrl, setEditedLicenseUrl] = useState(image.licenseUrl || '');
@@ -116,23 +119,35 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const lastTap = useRef<number>(0);
 
-  const isOwner = user?.uid === image.uploaderUid;
-  const hasLiked = user && image.likedBy?.includes(user.uid);
+  useEffect(() => {
+    const unsubscribe = subscribeToImage(image.id, (updatedImage) => {
+        setCurrentImage(updatedImage);
+    });
+    return () => unsubscribe();
+  }, [image.id]);
+  
+  // Update local state if parent props change (e.g. swapping images in feed)
+  useEffect(() => {
+    setCurrentImage(image);
+  }, [image]);
+
+  const isOwner = user?.uid === currentImage.uploaderUid;
+  const hasLiked = user && currentImage.likedBy?.includes(user.uid);
   
   const handleProfileClick = () => {
     onViewProfile({
-      uploaderUid: image.uploaderUid,
-      uploaderName: image.uploaderName,
-      uploaderPhotoURL: image.uploaderPhotoURL,
+      uploaderUid: currentImage.uploaderUid,
+      uploaderName: currentImage.uploaderName,
+      uploaderPhotoURL: currentImage.uploaderPhotoURL,
     });
   };
 
   const handleEditToggle = () => {
     if (isEditing) {
       // Cancel edit
-      setEditedLicense(image.license);
-      setEditedLicenseUrl(image.licenseUrl || '');
-      setEditedFlags(image.flags || []);
+      setEditedLicense(currentImage.license);
+      setEditedLicenseUrl(currentImage.licenseUrl || '');
+      setEditedFlags(currentImage.flags || []);
       setError(null);
     }
     setIsEditing(!isEditing);
@@ -157,8 +172,9 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
         flags: editedFlags,
         licenseUrl: editedLicense === 'Other' ? editedLicenseUrl : '',
       };
-      await updateImageDetails(image.id, updates);
-      onImageUpdate({ ...image, ...updates });
+      await updateImageDetails(currentImage.id, updates);
+      // Optimistic update passed to parent
+      onImageUpdate({ ...currentImage, ...updates });
       setIsEditing(false);
     } catch (err) {
       console.error("Failed to save changes:", err);
@@ -171,26 +187,27 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const handleDelete = async () => {
       if (window.confirm("Are you sure you want to permanently delete this image? This action cannot be undone.")) {
           setIsDeleting(true);
-          onImageDelete(image.id);
+          onImageDelete(currentImage.id);
       }
   };
 
   const handleDownload = async () => {
-    // Increment download count immediately
-    incrementDownloadCount(image.id);
-    // Update local state immediately for better UX
-    onImageUpdate({ ...image, downloadCount: (image.downloadCount || 0) + 1 });
+    // Increment download count immediately on server
+    incrementDownloadCount(currentImage.id);
+    
+    // Optimistically update UI (although subscription will catch it too)
+    setCurrentImage(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
+    onImageUpdate({ ...currentImage, downloadCount: (currentImage.downloadCount || 0) + 1 });
 
     try {
-      // Using a cors proxy for external image URLs if needed, but for now direct fetch
-      const response = await fetch(image.imageUrl);
+      const response = await fetch(currentImage.imageUrl);
       if (!response.ok) throw new Error('Network response was not ok.');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      const filename = image.imageUrl.split('/').pop()?.split('?')[0] || 'download.jpg';
+      const filename = currentImage.imageUrl.split('/').pop()?.split('?')[0] || 'download.jpg';
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -209,7 +226,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
       if (now - lastTap.current < DOUBLE_TAP_DELAY) {
           // Double tap detected
           if (!hasLiked) {
-              onLikeToggle(image);
+              onLikeToggle(currentImage);
           }
           setShowHeartAnimation(true);
           setTimeout(() => setShowHeartAnimation(false), 800);
@@ -248,20 +265,20 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
       );
     }
 
-    const licenseInfo = LICENSES.find(l => l.value === image.license);
-    const licenseName = licenseInfo?.label || image.license;
+    const licenseInfo = LICENSES.find(l => l.value === currentImage.license);
+    const licenseName = licenseInfo?.label || currentImage.license;
     const licenseExplanationUrl = licenseInfo?.url;
 
     return (
       <div className="space-y-4">
         <div>
             <h4 className="font-semibold mb-2 text-secondary text-sm">Downloads</h4>
-            <InfoChip>{(image.downloadCount || 0).toLocaleString()}</InfoChip>
+            <InfoChip>{(currentImage.downloadCount || 0).toLocaleString()}</InfoChip>
         </div>
         <div>
           <h4 className="font-semibold mb-2 text-secondary text-sm">License</h4>
-          {image.license === 'Other' && image.licenseUrl ? (
-             <a href={image.licenseUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-border text-accent hover:underline text-xs font-medium mr-2 px-2.5 py-1 rounded-full">
+          {currentImage.license === 'Other' && currentImage.licenseUrl ? (
+             <a href={currentImage.licenseUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-border text-accent hover:underline text-xs font-medium mr-2 px-2.5 py-1 rounded-full">
                 {licenseName} (Custom URL)
              </a>
           ) : licenseExplanationUrl ? (
@@ -272,11 +289,11 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
             <InfoChip>{licenseName}</InfoChip>
           )}
         </div>
-        {image.flags && image.flags.length > 0 && (
+        {currentImage.flags && currentImage.flags.length > 0 && (
           <div>
             <h4 className="font-semibold mb-2 text-secondary text-sm">Tags</h4>
             <div className="flex flex-wrap gap-2">
-              {image.flags.map(flag => <InfoChip key={flag}>{flag}</InfoChip>)}
+              {currentImage.flags.map(flag => <InfoChip key={flag}>{flag}</InfoChip>)}
             </div>
           </div>
         )}
@@ -289,7 +306,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="md:w-2/3 bg-background flex items-center justify-center p-2 relative group select-none">
             <img 
-                src={image.imageUrl} 
+                src={currentImage.imageUrl} 
                 alt="Detailed view" 
                 className="max-w-full max-h-[50vh] md:max-h-[85vh] object-contain rounded-lg touch-manipulation cursor-pointer"
                 onClick={handleDoubleTap}
@@ -312,15 +329,15 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
           
           <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
             <button onClick={handleProfileClick} className="flex-grow text-left flex items-center gap-3 hover:bg-border/50 p-2 -m-2 rounded-lg transition-colors">
-              <img src={image.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${image.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`} alt={image.uploaderName} className="w-12 h-12 rounded-full" />
+              <img src={currentImage.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${currentImage.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`} alt={currentImage.uploaderName} className="w-12 h-12 rounded-full" />
               <div>
-                <p className="font-semibold">{image.uploaderName}</p>
-                <p className="text-xs text-secondary">Uploaded on {new Date(image.uploadedAt?.toDate()).toLocaleDateString()}</p>
+                <p className="font-semibold">{currentImage.uploaderName}</p>
+                <p className="text-xs text-secondary">Uploaded on {new Date(currentImage.uploadedAt?.toDate()).toLocaleDateString()}</p>
               </div>
             </button>
-            <button onClick={() => onLikeToggle(image)} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-colors ${hasLiked ? 'bg-accent/20 text-accent' : 'bg-border text-secondary hover:bg-border/80'}`}>
+            <button onClick={() => onLikeToggle(currentImage)} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-colors ${hasLiked ? 'bg-accent/20 text-accent' : 'bg-border text-secondary hover:bg-border/80'}`}>
                 {hasLiked ? <HeartIconSolid /> : <HeartIconOutline />}
-                <span>{image.likeCount || 0}</span>
+                <span>{currentImage.likeCount || 0}</span>
             </button>
           </div>
           
@@ -329,19 +346,19 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
              <div>
                 <h4 className="font-semibold mb-1 text-secondary text-sm">Image URL</h4>
                 <div className="relative">
-                    <input type="text" readOnly value={image.imageUrl} className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs text-secondary pr-8 select-all" />
-                    <button onClick={() => navigator.clipboard.writeText(image.imageUrl)} className="absolute top-1/2 right-1 -translate-y-1/2 p-1 text-secondary hover:text-primary" title="Copy URL">
+                    <input type="text" readOnly value={currentImage.imageUrl} className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs text-secondary pr-8 select-all" />
+                    <button onClick={() => navigator.clipboard.writeText(currentImage.imageUrl)} className="absolute top-1/2 right-1 -translate-y-1/2 p-1 text-secondary hover:text-primary" title="Copy URL">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                     </button>
                 </div>
             </div>
-            {image.originalWorkUrl && (
+            {currentImage.originalWorkUrl && (
               <div>
                   <h4 className="font-semibold mb-1 text-secondary text-sm">Original Work</h4>
-                  <a href={image.originalWorkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline break-all">
-                      {image.originalWorkUrl}
+                  <a href={currentImage.originalWorkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline break-all">
+                      {currentImage.originalWorkUrl}
                   </a>
               </div>
             )}
@@ -372,7 +389,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
           )}
         </div>
       </div>
-       {showAttribution && <AttributionModal image={image} onClose={() => setShowAttribution(false)} />}
+       {showAttribution && <AttributionModal image={currentImage} onClose={() => setShowAttribution(false)} />}
     </div>
   );
 };

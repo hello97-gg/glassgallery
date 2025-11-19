@@ -57,6 +57,31 @@ export const getImagesFromFirestore = async (): Promise<{ images: ImageMeta[] }>
     }
 };
 
+// Real-time subscription for the feed
+export const subscribeToImages = (callback: (images: ImageMeta[]) => void) => {
+    const q = db.collection("images").orderBy("uploadedAt", "desc");
+    return q.onSnapshot(snapshot => {
+        const images = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        })) as ImageMeta[];
+        callback(images);
+    }, (error) => {
+        console.error("Error subscribing to images:", error);
+    });
+};
+
+// Real-time subscription for a single image (Detail View)
+export const subscribeToImage = (imageId: string, callback: (image: ImageMeta) => void) => {
+    return db.collection("images").doc(imageId).onSnapshot(doc => {
+        if (doc.exists) {
+            callback({ id: doc.id, ...doc.data() } as ImageMeta);
+        }
+    }, (error) => {
+        console.error("Error subscribing to image:", error);
+    });
+};
+
 export const getImagesByUploader = async (uploaderUid: string): Promise<{ images: ImageMeta[] }> => {
     try {
       const q = db.collection("images")

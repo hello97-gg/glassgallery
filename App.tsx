@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { getImagesFromFirestore, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike, PAGE_SIZE } from './services/firestoreService';
+import { subscribeToImages, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike, PAGE_SIZE } from './services/firestoreService';
 import type { ImageMeta, ProfileUser, Notification } from './types';
 
 import Sidebar from './components/Header';
@@ -11,7 +12,6 @@ import LoginModal from './components/LoginScreen';
 import ImageGrid from './components/ImageGrid';
 import UploadModal from './components/UploadModal';
 import ImageDetailModal from './components/ImageDetailModal';
-import Spinner from './components/Spinner';
 import ExplorePage from './components/ExplorePage';
 import ProfilePage from './components/ProfilePage';
 import { MobileNotificationsModal } from './components/Notifications';
@@ -153,26 +153,69 @@ const App: React.FC = () => {
     }
   }, [user]);
 
-  const fetchImages = useCallback(async () => {
-    setImagesLoading(true);
-    try {
-      const { images: fetchedImages } = await getImagesFromFirestore();
-      const sorted = smartSortImages([...fetchedImages]);
-      setAllImages(sorted);
-      setDisplayedImages(sorted.slice(0, PAGE_SIZE));
-      setCurrentIndex(PAGE_SIZE);
-    } catch (error) {
-      console.error("Error fetching images:", error);
-    } finally {
-      setImagesLoading(false);
-    }
-  }, []);
-
+  // --- Real-time Image Subscription ---
   useEffect(() => {
-    if (activeView !== 'profile') {
-      fetchImages();
+    let unsubscribe: () => void;
+
+    if (activeView === 'home' || activeView === 'explore') {
+        setImagesLoading(true);
+        
+        unsubscribe = subscribeToImages((fetchedImages) => {
+            setAllImages((prevImages) => {
+                 // 1. First load: Sort intelligently
+                 if (prevImages.length === 0) {
+                     const sorted = smartSortImages(fetchedImages);
+                     setDisplayedImages(sorted.slice(0, PAGE_SIZE));
+                     setCurrentIndex(PAGE_SIZE);
+                     setImagesLoading(false);
+                     return sorted;
+                 }
+                 
+                 // 2. Subsequent updates (Real-time): Preserve order, update data, prepend new
+                 const newMap = new Map(fetchedImages.map(i => [i.id, i]));
+                 
+                 // Update existing images in list, remove deleted ones
+                 const updatedExisting = prevImages
+                    .filter(img => newMap.has(img.id))
+                    .map(img => newMap.get(img.id)!);
+                 
+                 // Identify brand new uploads
+                 const currentIds = new Set(prevImages.map(i => i.id));
+                 const newUploads = fetchedImages.filter(i => !currentIds.has(i.id));
+                 
+                 // Merge: New uploads at top + updated existing list
+                 const finalImages = [...newUploads, ...updatedExisting];
+                 
+                 // Sync displayed images with new data
+                 setDisplayedImages(prevDisplayed => {
+                    return prevDisplayed
+                        .filter(d => newMap.has(d.id)) // Remove deleted
+                        .map(d => newMap.get(d.id)!); // Update data (counts etc)
+                 });
+
+                 setImagesLoading(false);
+                 return finalImages;
+            });
+        });
     }
-  }, [fetchImages, activeView]);
+    
+    return () => {
+        if (unsubscribe) unsubscribe();
+    };
+  }, [activeView]);
+
+  // Sync selectedImage with allImages updates to show real-time counts in modal if open
+  useEffect(() => {
+    if (selectedImage && allImages.length > 0) {
+        const updated = allImages.find(img => img.id === selectedImage.id);
+        if (updated && updated !== selectedImage) {
+            setSelectedImage(updated);
+        } else if (!updated) {
+             // Image was deleted remotely
+             setSelectedImage(null);
+        }
+    }
+  }, [allImages, selectedImage]);
 
   const loadMoreImages = useCallback(() => {
     if (imagesLoading || allImages.length === 0) return;
@@ -184,9 +227,9 @@ const App: React.FC = () => {
         setCurrentIndex(nextIndex);
     } else {
         // Reached the end, re-sort and append to create an infinite loop
-        const resorted = smartSortImages([...allImages]);
-        setAllImages(resorted);
-        const newImages = resorted.slice(0, PAGE_SIZE);
+        // For infinite loop, we might lose the "real-time-ness" of specific items if we clone them.
+        // Simpler to just stop or loop the sorted list again.
+        const newImages = allImages.slice(0, PAGE_SIZE);
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(PAGE_SIZE);
     }
@@ -293,7 +336,7 @@ const App: React.FC = () => {
     if (activeView !== 'profile') {
         setActiveView('home');
     }
-    fetchImages(); // Refetch all to include the new one
+    // The subscription will automatically fetch the new image.
   };
 
   const handleCreateClick = () => {
@@ -323,6 +366,7 @@ const App: React.FC = () => {
     setProfileUser(null);
   }
 
+  // Kept for optimistic updates, though subscription will also update eventually.
   const handleImageUpdate = (updatedImage: ImageMeta) => {
     const updater = (prevImages: ImageMeta[]) => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img);
     setDisplayedImages(updater);
@@ -346,7 +390,7 @@ const App: React.FC = () => {
         : [...oldLikedBy, user.uid];
 
     const updatedImage = { ...image, likedBy: newLikedBy, likeCount: newLikedBy.length };
-    handleImageUpdate(updatedImage);
+    handleImageUpdate(updatedImage); // Optimistic update
 
     try {
         await toggleImageLike(image, user);
@@ -359,8 +403,7 @@ const App: React.FC = () => {
   const handleImageDelete = async (imageId: string) => {
     try {
         await deleteImageFromFirestore(imageId);
-        setDisplayedImages(prev => prev.filter(img => img.id !== imageId));
-        setAllImages(prev => prev.filter(img => img.id !== imageId));
+        // Subscription will handle removal from lists
         setSelectedImage(null);
     } catch (error) {
         console.error("Failed to delete image:", error);
