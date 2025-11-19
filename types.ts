@@ -1,3 +1,4 @@
+
 // Fix: Use Firebase v8 compatibility imports to resolve module errors for Timestamp.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
@@ -15,6 +16,7 @@ export interface ImageMeta {
   uploadedAt: firebase.firestore.Timestamp;
   likeCount?: number;
   likedBy?: string[];
+  downloadCount?: number;
 }
 
 export interface License {

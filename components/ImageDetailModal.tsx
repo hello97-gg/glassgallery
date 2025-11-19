@@ -1,8 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
 import { LICENSES, FLAGS } from '../constants';
-import { updateImageDetails } from '../services/firestoreService';
+import { updateImageDetails, deleteImageFromFirestore, incrementDownloadCount } from '../services/firestoreService';
 import Button from './Button';
 import Spinner from './Spinner';
 
@@ -175,6 +176,11 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   };
 
   const handleDownload = async () => {
+    // Increment download count immediately
+    incrementDownloadCount(image.id);
+    // Update local state immediately for better UX
+    onImageUpdate({ ...image, downloadCount: (image.downloadCount || 0) + 1 });
+
     try {
       // Using a cors proxy for external image URLs if needed, but for now direct fetch
       const response = await fetch(image.imageUrl);
@@ -248,6 +254,10 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
 
     return (
       <div className="space-y-4">
+        <div>
+            <h4 className="font-semibold mb-2 text-secondary text-sm">Downloads</h4>
+            <InfoChip>{(image.downloadCount || 0).toLocaleString()}</InfoChip>
+        </div>
         <div>
           <h4 className="font-semibold mb-2 text-secondary text-sm">License</h4>
           {image.license === 'Other' && image.licenseUrl ? (

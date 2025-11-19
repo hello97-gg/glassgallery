@@ -1,3 +1,4 @@
+
 import { db } from './firebase';
 // Fix: Use Firebase v8 compatibility imports.
 import firebase from 'firebase/compat/app';
@@ -29,6 +30,7 @@ export const addImageToFirestore = async (
             originalWorkUrl: originalWorkUrl || '',
             likeCount: 0,
             likedBy: [],
+            downloadCount: 0,
             // Fix: Use v8 compat syntax for serverTimestamp.
             uploadedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
@@ -91,6 +93,17 @@ export const deleteImageFromFirestore = async (imageId: string) => {
     } catch (error) {
         console.error("Error deleting document: ", error);
         throw error;
+    }
+};
+
+export const incrementDownloadCount = async (imageId: string) => {
+    try {
+        const imageRef = db.collection("images").doc(imageId);
+        await imageRef.update({
+            downloadCount: firebase.firestore.FieldValue.increment(1)
+        });
+    } catch (error) {
+        console.error("Error incrementing download count: ", error);
     }
 };
 
