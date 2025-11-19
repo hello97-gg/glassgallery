@@ -46,43 +46,48 @@ const SkeletonGrid: React.FC = () => {
   );
 };
 
-// Smart sorting algorithm to prioritize new and undiscovered content
+// Smart "Addictive" sorting algorithm
 const smartSortImages = (images: ImageMeta[]): ImageMeta[] => {
   const now = Date.now();
-  const oneDay = 24 * 60 * 60 * 1000;
-  const oneWeek = 7 * oneDay;
 
   // Extend ImageMeta with a temporary sortScore for sorting
   type ImageWithScore = ImageMeta & { sortScore?: number };
 
   return images
     .map((image: ImageMeta): ImageWithScore => {
-      const uploadedAt = image.uploadedAt.toDate().getTime();
-      const age = now - uploadedAt;
+      // Handle potential missing timestamps during optimistic UI updates
+      const uploadedAt = image.uploadedAt?.toDate ? image.uploadedAt.toDate().getTime() : now;
+      const ageInHours = (now - uploadedAt) / (1000 * 60 * 60);
 
-      // 1. Recency Score (higher is better)
+      // 1. Recency Score (Aggressive Exponential Decay)
+      // We want fresh content to explode onto the feed.
       let recencyScore = 0;
-      if (age < oneDay) {
-        recencyScore = 100; // High score for images uploaded in the last 24 hours
-      } else if (age < oneWeek) {
-        recencyScore = 50;  // Medium score for images within the week
+      if (ageInHours < 0.5) {
+          recencyScore = 3000; // INSTANT: Last 30 mins
+      } else if (ageInHours < 4) {
+          recencyScore = 1500; // FRESH: Last 4 hours
+      } else if (ageInHours < 24) {
+          recencyScore = 800;  // TODAY: Last 24 hours
+      } else if (ageInHours < 72) {
+          recencyScore = 300;  // RECENT: Last 3 days
       } else {
-        recencyScore = Math.max(10, 100 - (age / oneWeek)); // Gradually decreasing score for older images
+          // Older content drops off fast, but can be saved by massive popularity
+          recencyScore = 100 / (Math.max(1, ageInHours / 24)); 
       }
 
-      // 2. Discovery Score (higher is better for less popular images)
+      // 2. Popularity/Dopamine Score
+      // High likes and downloads keep users engaged with quality content.
       const likeCount = image.likeCount || 0;
-      const discoveryScore = 1 / (likeCount + 1); // Ranges from 1 (for 0 likes) down to near 0
+      const downloadCount = image.downloadCount || 0;
+      // Likes are heavily weighted for social proof.
+      const popularityScore = (likeCount * 15) + (downloadCount * 5); 
 
-      // 3. Randomness to keep the feed from being static
-      const randomFactor = Math.random();
+      // 3. Variable Reward (Randomness)
+      // Ensures the feed never looks exactly the same, triggering "slot machine" psychology.
+      const randomFactor = Math.random() * 250;
 
-      // Combine scores with weights to determine final sort order
-      // Recency is heavily weighted, followed by a boost for discovery, and a touch of randomness.
-      const finalScore = 
-        (recencyScore * 0.7) +   // 70% weight for recency
-        (discoveryScore * 20) +  // A significant boost for undiscovered images
-        (randomFactor * 10);     // A small random factor
+      // Final Score Calculation
+      const finalScore = recencyScore + popularityScore + randomFactor;
 
       return { ...image, sortScore: finalScore };
     })
@@ -158,11 +163,14 @@ const App: React.FC = () => {
     let unsubscribe: () => void;
 
     if (activeView === 'home' || activeView === 'explore') {
-        setImagesLoading(true);
+        // Only show loading spinner if we have NO images at all
+        if (allImages.length === 0) {
+            setImagesLoading(true);
+        }
         
         unsubscribe = subscribeToImages((fetchedImages) => {
             setAllImages((prevImages) => {
-                 // 1. First load: Sort intelligently
+                 // 1. First load: Sort intelligently with the aggressive algorithm
                  if (prevImages.length === 0) {
                      const sorted = smartSortImages(fetchedImages);
                      setDisplayedImages(sorted.slice(0, PAGE_SIZE));
@@ -171,30 +179,52 @@ const App: React.FC = () => {
                      return sorted;
                  }
                  
-                 // 2. Subsequent updates (Real-time): Preserve order, update data, prepend new
+                 // 2. Real-time Updates:
                  const newMap = new Map(fetchedImages.map(i => [i.id, i]));
                  
-                 // Update existing images in list, remove deleted ones
-                 const updatedExisting = prevImages
+                 // Identify brand new uploads that weren't in our previous state
+                 const currentIds = new Set(prevImages.map(i => i.id));
+                 const newUploads = fetchedImages.filter(i => !currentIds.has(i.id));
+
+                 // Update existing images in the list (e.g., like counts changed) without reordering them
+                 // This prevents the feed from jumping around while the user is reading.
+                 let updatedList = prevImages
                     .filter(img => newMap.has(img.id))
                     .map(img => newMap.get(img.id)!);
                  
-                 // Identify brand new uploads
-                 const currentIds = new Set(prevImages.map(i => i.id));
-                 const newUploads = fetchedImages.filter(i => !currentIds.has(i.id));
+                 // AGGRESSIVE: Inject new uploads immediately at the TOP
+                 if (newUploads.length > 0) {
+                     // Sort new uploads by time (newest first) just in case multiple arrived
+                     const sortedNew = newUploads.sort((a, b) => {
+                         const timeA = a.uploadedAt?.toDate ? a.uploadedAt.toDate().getTime() : 0;
+                         const timeB = b.uploadedAt?.toDate ? b.uploadedAt.toDate().getTime() : 0;
+                         return timeB - timeA;
+                     });
+                     updatedList = [...sortedNew, ...updatedList];
+                 }
                  
-                 // Merge: New uploads at top + updated existing list
-                 const finalImages = [...newUploads, ...updatedExisting];
-                 
-                 // Sync displayed images with new data
+                 // Sync displayed images: Update data AND prepend new uploads
                  setDisplayedImages(prevDisplayed => {
-                    return prevDisplayed
+                    // Update data of currently displayed cards
+                    let updatedDisplayed = prevDisplayed
                         .filter(d => newMap.has(d.id)) // Remove deleted
-                        .map(d => newMap.get(d.id)!); // Update data (counts etc)
+                        .map(d => newMap.get(d.id)!); // Update counts/meta
+                    
+                    // If there are new uploads, SHOW THEM NOW
+                    if (newUploads.length > 0) {
+                         const sortedNew = newUploads.sort((a, b) => {
+                             const timeA = a.uploadedAt?.toDate ? a.uploadedAt.toDate().getTime() : 0;
+                             const timeB = b.uploadedAt?.toDate ? b.uploadedAt.toDate().getTime() : 0;
+                             return timeB - timeA;
+                         });
+                         return [...sortedNew, ...updatedDisplayed];
+                    }
+
+                    return updatedDisplayed;
                  });
 
                  setImagesLoading(false);
-                 return finalImages;
+                 return updatedList;
             });
         });
     }
@@ -226,19 +256,19 @@ const App: React.FC = () => {
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(nextIndex);
     } else {
-        // Reached the end, re-sort and append to create an infinite loop
-        // For infinite loop, we might lose the "real-time-ness" of specific items if we clone them.
-        // Simpler to just stop or loop the sorted list again.
+        // Infinite Scroll Loop: If we run out, grab from the start again
+        // This creates an "endless" feeling
         const newImages = allImages.slice(0, PAGE_SIZE);
         setDisplayedImages(prev => [...prev, ...newImages]);
-        setCurrentIndex(PAGE_SIZE);
+        // We don't reset currentIndex to 0 here to avoid breaking key logic if we used index,
+        // but since we append, we just cycle.
     }
   }, [currentIndex, allImages, imagesLoading]);
 
   useEffect(() => {
     const handleScroll = () => {
       if (activeView === 'home') {
-          const scrollThreshold = 800; // Pixels from bottom, increased for smoother triggering
+          const scrollThreshold = 1000; // Trigger earlier for smoother experience
           const isAtBottom = window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - scrollThreshold;
           
           if (isAtBottom) {
@@ -335,8 +365,9 @@ const App: React.FC = () => {
     setDroppedFile(null);
     if (activeView !== 'profile') {
         setActiveView('home');
+        // If we upload while on Home, scroll to top to see it
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    // The subscription will automatically fetch the new image.
   };
 
   const handleCreateClick = () => {
@@ -362,8 +393,21 @@ const App: React.FC = () => {
   }
   
   const handleSetView = (view: 'home' | 'explore' | 'notifications') => {
-    setActiveView(view);
-    setProfileUser(null);
+    // If clicking the tab we are already on (Home or Explore), Refresh/Reshuffle the feed
+    if (view === activeView && (view === 'home' || view === 'explore')) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Trigger a reshuffle of the existing images for a fresh look
+        setAllImages(prevImages => {
+             const reshuffled = smartSortImages(prevImages);
+             setDisplayedImages(reshuffled.slice(0, PAGE_SIZE));
+             setCurrentIndex(PAGE_SIZE);
+             return reshuffled;
+        });
+    } else {
+        setActiveView(view);
+        setProfileUser(null);
+    }
   }
 
   // Kept for optimistic updates, though subscription will also update eventually.
