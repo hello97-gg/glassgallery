@@ -151,10 +151,10 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     });
   };
 
-  const handleLocationClick = () => {
+  const handleLocationClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
       if (currentImage.location && onLocationClick) {
           onLocationClick(currentImage.location);
-          onClose();
       }
   }
 
@@ -340,7 +340,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
                 <h4 className="font-semibold mb-1 text-secondary text-sm">Location</h4>
                 <button 
                     onClick={handleLocationClick} 
-                    className={`flex items-center gap-1 text-sm font-medium ${onLocationClick ? 'text-accent hover:underline' : 'text-primary'}`}
+                    className={`flex items-center gap-1 text-sm font-medium ${onLocationClick ? 'text-accent hover:underline cursor-pointer' : 'text-primary cursor-default'}`}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     {currentImage.location}
@@ -368,6 +368,15 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
               )}
             </div>
         </div>
+
+        {currentImage.originalWorkUrl && (
+           <div>
+             <h4 className="font-semibold mb-1 text-secondary text-sm">Original Source</h4>
+             <a href={currentImage.originalWorkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline truncate block">
+               {currentImage.originalWorkUrl}
+             </a>
+           </div>
+        )}
 
         {currentImage.flags && currentImage.flags.length > 0 && (
           <div>
@@ -445,8 +454,20 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
             {renderDetails()}
             
              <div className="pt-2">
-                <Button onClick={handleShare} variant="secondary" fullWidth className="gap-2">
-                    {shareCopied ? "Link Copied!" : "Share Image"}
+                <Button onClick={handleShare} variant="secondary" fullWidth className="gap-2 flex items-center justify-center">
+                    {shareCopied ? (
+                        <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            Link Copied!
+                        </>
+                    ) : (
+                        <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                            </svg>
+                            Share Image
+                        </>
+                    )}
                 </Button>
              </div>
           </div>

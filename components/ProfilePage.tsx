@@ -109,6 +109,35 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
     return () => window.removeEventListener('scroll', throttledScrollHandler);
   }, [loadMoreUserImages]);
 
+  // Wrapper to handle local state update for likes, as the prop only updates App state
+  const handleLocalLikeToggle = (image: ImageMeta) => {
+      if (!loggedInUser) {
+          onLikeToggle(image); // Will trigger login modal from App
+          return;
+      }
+
+      // Optimistic update logic
+      const oldLikedBy = image.likedBy || [];
+      const hasLiked = oldLikedBy.includes(loggedInUser.uid);
+      const newLikedBy = hasLiked
+        ? oldLikedBy.filter(id => id !== loggedInUser.uid)
+        : [...oldLikedBy, loggedInUser.uid];
+      
+      const updatedImage = { 
+          ...image, 
+          likedBy: newLikedBy, 
+          likeCount: newLikedBy.length 
+      };
+
+      // Update local state
+      const updater = (prev: ImageMeta[]) => prev.map(img => img.id === image.id ? updatedImage : img);
+      setAllImages(updater);
+      setDisplayedImages(updater);
+
+      // Call parent to handle Firestore and App-wide state
+      onLikeToggle(image);
+  };
+
   const totalLikes = useMemo(() => allImages.reduce((sum, img) => sum + (img.likeCount || 0), 0), [allImages]);
   const totalDownloads = useMemo(() => allImages.reduce((sum, img) => sum + (img.downloadCount || 0), 0), [allImages]);
   
@@ -211,7 +240,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
         </div>
       ) : (
         <div className="px-4 md:px-8">
-             <ImageGrid user={loggedInUser} images={displayedImages} onImageClick={onImageClick} onViewProfile={onViewProfile} onLikeToggle={onLikeToggle} />
+             <ImageGrid user={loggedInUser} images={displayedImages} onImageClick={onImageClick} onViewProfile={onViewProfile} onLikeToggle={handleLocalLikeToggle} />
         </div>
       )}
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
@@ -58,9 +59,9 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfi
         loading="lazy"
         onLoad={() => setIsLoaded(true)}
       />
-      {/* Hidden on mobile (md:flex) to avoid sticky hover states */}
-      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent hidden md:flex items-end justify-between p-3 transition-opacity duration-300 ${isLoaded ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
-        <button onClick={handleProfileClick} className="flex items-center space-x-2 group/profile hover:scale-105 transition-transform z-10">
+      {/* Hidden on mobile (md:flex) to avoid sticky hover states. Added z-10 to ensure clicks are captured. */}
+      <div className={`absolute inset-0 z-10 bg-gradient-to-t from-black/60 to-transparent hidden md:flex items-end justify-between p-3 transition-opacity duration-300 ${isLoaded ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+        <button onClick={handleProfileClick} className="flex items-center space-x-2 group/profile hover:scale-105 transition-transform z-20">
             <img 
                 src={image.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${image.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`}
                 className="w-6 h-6 rounded-full border-2 border-surface"
@@ -68,7 +69,7 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfi
             />
             <p className="text-white text-xs font-semibold group-hover/profile:underline">{image.uploaderName}</p>
         </button>
-        <button onClick={handleLikeClick} className="flex items-center space-x-1.5 text-white bg-black/20 backdrop-blur-sm rounded-full py-1 px-2.5 hover:text-accent hover:scale-105 transition-all z-10">
+        <button onClick={handleLikeClick} className="flex items-center space-x-1.5 text-white bg-black/20 backdrop-blur-sm rounded-full py-1 px-2.5 hover:text-accent hover:scale-105 transition-all z-20">
             {hasLiked ? <HeartIconSolid/> : <HeartIconOutline/>}
             <span className="text-xs font-semibold">{image.likeCount || 0}</span>
         </button>
