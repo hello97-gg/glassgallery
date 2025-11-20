@@ -93,7 +93,7 @@ const AttributionModal: React.FC<{ image: ImageMeta, onClose: () => void }> = ({
 };
 
 const HeartIconSolid = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-accent" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
     </svg>
 );
@@ -121,6 +121,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const [showAttribution, setShowAttribution] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const [isLikeBtnAnimating, setIsLikeBtnAnimating] = useState(false);
   const lastTap = useRef<number>(0);
 
   useEffect(() => {
@@ -265,15 +266,26 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     }
   };
 
+  const handleLikeClick = () => {
+      setIsLikeBtnAnimating(true);
+      onLikeToggle(currentImage);
+      setTimeout(() => setIsLikeBtnAnimating(false), 400);
+  };
+
   const handleDoubleTap = (e: React.MouseEvent | React.TouchEvent) => {
       const now = Date.now();
       const DOUBLE_TAP_DELAY = 300;
       if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+          // Trigger like if not already liked
           if (!hasLiked) {
               onLikeToggle(currentImage);
           }
+          // Trigger both big heart animation and small button animation
           setShowHeartAnimation(true);
+          setIsLikeBtnAnimating(true);
+          
           setTimeout(() => setShowHeartAnimation(false), 800);
+          setTimeout(() => setIsLikeBtnAnimating(false), 400);
       }
       lastTap.current = now;
   };
@@ -409,7 +421,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
                 onClick={handleDoubleTap}
             />
             {showHeartAnimation && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 animate-fade-in">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 animate-like-bounce">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-32 w-32 text-white drop-shadow-2xl opacity-90" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                     </svg>
@@ -444,8 +456,10 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
                 <p className="text-xs text-secondary">Uploaded on {new Date(currentImage.uploadedAt?.toDate()).toLocaleDateString()}</p>
               </div>
             </button>
-            <button onClick={() => onLikeToggle(currentImage)} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-colors ${hasLiked ? 'bg-accent/20 text-accent' : 'bg-border text-secondary hover:bg-border/80'}`}>
-                {hasLiked ? <HeartIconSolid /> : <HeartIconOutline />}
+            <button onClick={handleLikeClick} className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-colors ${hasLiked ? 'bg-accent/20 text-accent' : 'bg-border text-secondary hover:bg-border/80'}`}>
+                <div className={isLikeBtnAnimating ? 'animate-like-bounce' : ''}>
+                    {hasLiked ? <HeartIconSolid /> : <HeartIconOutline />}
+                </div>
                 <span>{currentImage.likeCount || 0}</span>
             </button>
           </div>

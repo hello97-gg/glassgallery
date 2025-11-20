@@ -13,7 +13,7 @@ interface ImageCardProps {
 }
 
 const HeartIconSolid = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-accent" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
     </svg>
 );
@@ -26,6 +26,7 @@ const HeartIconOutline = () => (
 
 const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfile, onLikeToggle, className = '' }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   
   const combinedClassName = `group relative bg-surface rounded-xl overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-[1.03] mb-4 md:mb-6 break-inside-avoid ${className}`;
   const hasLiked = user && image.likedBy?.includes(user.uid);
@@ -41,7 +42,9 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfi
   
   const handleLikeClick = (e: React.MouseEvent) => {
       e.stopPropagation();
+      setIsLikeAnimating(true);
       onLikeToggle(image);
+      setTimeout(() => setIsLikeAnimating(false), 400);
   };
 
   return (
@@ -70,7 +73,9 @@ const ImageCard: React.FC<ImageCardProps> = ({ image, user, onClick, onViewProfi
             <p className="text-white text-xs font-semibold group-hover/profile:underline">{image.uploaderName}</p>
         </button>
         <button onClick={handleLikeClick} className="flex items-center space-x-1.5 text-white bg-black/20 backdrop-blur-sm rounded-full py-1 px-2.5 hover:text-accent hover:scale-105 transition-all z-20">
-            {hasLiked ? <HeartIconSolid/> : <HeartIconOutline/>}
+            <div className={isLikeAnimating ? 'animate-like-bounce' : ''}>
+                {hasLiked ? <HeartIconSolid/> : <HeartIconOutline/>}
+            </div>
             <span className="text-xs font-semibold">{image.likeCount || 0}</span>
         </button>
       </div>
