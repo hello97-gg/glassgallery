@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
@@ -25,10 +26,11 @@ const CategoryCard: React.FC<{ flag: string, image: ImageMeta, onClick: () => vo
 
 const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, onViewProfile, onLikeToggle }) => {
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // Aggregate images by tags (flags)
   const imagesByFlag = useMemo(() => {
     return images.reduce((acc, image) => {
-      // Ensure flags is an array before iterating
       if (Array.isArray(image.flags)) {
         image.flags.forEach(flag => {
           if (!acc[flag]) {
@@ -43,6 +45,68 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
 
   const sortedFlags = useMemo(() => Object.keys(imagesByFlag).sort(), [imagesByFlag]);
 
+  // Search Logic
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    
+    const lowerQuery = searchQuery.toLowerCase();
+    return images.filter(img => {
+        const titleMatch = img.title?.toLowerCase().includes(lowerQuery);
+        const descMatch = img.description?.toLowerCase().includes(lowerQuery);
+        const flagMatch = img.flags?.some(f => f.toLowerCase().includes(lowerQuery));
+        const uploaderMatch = img.uploaderName.toLowerCase().includes(lowerQuery);
+        
+        return titleMatch || descMatch || flagMatch || uploaderMatch;
+    });
+  }, [images, searchQuery]);
+
+
+  // --- RENDER HELPERS ---
+
+  // 1. Search Results View
+  if (searchQuery.trim()) {
+      return (
+        <div className="animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <h1 className="text-3xl font-bold text-primary">Search Results</h1>
+                <div className="relative w-full md:w-96">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-secondary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input 
+                        type="text"
+                        placeholder="Search tags, titles, users..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        autoFocus
+                        className="block w-full pl-10 pr-16 py-2 border border-border rounded-full leading-5 bg-surface text-primary placeholder-secondary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent sm:text-sm transition-all shadow-sm"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent text-surface tracking-wider">
+                            BETA
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            {searchResults.length > 0 ? (
+                <ImageGrid images={searchResults} user={user} onImageClick={onImageClick} onViewProfile={onViewProfile} onLikeToggle={onLikeToggle} />
+            ) : (
+                <div className="text-center py-16 bg-surface/30 rounded-2xl border border-border border-dashed">
+                    <svg className="mx-auto h-12 w-12 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-primary">No matches found</h3>
+                    <p className="mt-1 text-sm text-secondary">Try searching for something else like "Abstract" or "Nature".</p>
+                </div>
+            )}
+        </div>
+      );
+  }
+
+  // 2. Empty State (No images in DB)
   if (sortedFlags.length === 0) {
     return (
       <div className="text-center py-16">
@@ -52,6 +116,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
     );
   }
 
+  // 3. Selected Category View
   if (selectedFlag) {
     return (
       <div className="animate-fade-in">
@@ -68,9 +133,34 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
     );
   }
 
+  // 4. Default Categories List View
   return (
     <div className="animate-fade-in">
-      <h1 className="text-3xl font-bold mb-6 text-primary">Explore Categories</h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <h1 className="text-3xl font-bold text-primary">Explore</h1>
+            
+            {/* Search Bar */}
+            <div className="relative w-full md:w-96 group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-secondary group-focus-within:text-accent transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input 
+                    type="text"
+                    placeholder="Search images, tags, users..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-16 py-2 border border-border rounded-full leading-5 bg-surface text-primary placeholder-secondary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent sm:text-sm transition-all shadow-sm"
+                />
+                <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent text-surface tracking-wider">
+                        BETA
+                    </span>
+                </div>
+            </div>
+        </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
         {sortedFlags.map((flag) => {
           const categoryImages = imagesByFlag[flag];
