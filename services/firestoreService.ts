@@ -1,10 +1,10 @@
 
-import { db } from './firebase';
+import { db, auth } from './firebase';
 // Fix: Use Firebase v8 compatibility imports.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import 'firebase/compat/auth';
-import type { ImageMeta, Notification } from '../types';
+import type { ImageMeta, Notification, ProfileUser } from '../types';
 import type { User } from 'firebase/auth';
 
 export const PAGE_SIZE = 20; // Increased for better client-side pagination feel
@@ -17,7 +17,8 @@ export const addImageToFirestore = async (
     license: string, 
     flags: string[], 
     originalWorkUrl?: string,
-    licenseUrl?: string
+    licenseUrl?: string,
+    location?: string
     ) => {
     try {
         // Fix: Use v8 compat syntax for adding a document.
@@ -32,6 +33,7 @@ export const addImageToFirestore = async (
             licenseUrl: licenseUrl || '',
             flags,
             originalWorkUrl: originalWorkUrl || '',
+            location: location || '',
             likeCount: 0,
             likedBy: [],
             downloadCount: 0,
@@ -105,7 +107,7 @@ export const getImagesByUploader = async (uploaderUid: string): Promise<{ images
     }
   };
 
-export const updateImageDetails = async (imageId: string, updates: { title?: string; description?: string; license?: string; flags?: string[]; licenseUrl?: string }) => {
+export const updateImageDetails = async (imageId: string, updates: { title?: string; description?: string; license?: string; flags?: string[]; licenseUrl?: string; location?: string }) => {
     try {
         const imageRef = db.collection("images").doc(imageId);
         await imageRef.update(updates);
@@ -143,8 +145,6 @@ export const toggleImageLike = async (image: ImageMeta, user: User) => {
     let transactionResult: { wasLike: boolean, uploaderUid: string } | null = null;
 
     // Phase 1: Atomically update the like count and array in a transaction.
-    // This keeps the transaction simple, focusing only on one document to avoid
-    // complex security rule failures that can occur with multi-document writes.
     await db.runTransaction(async (transaction) => {
         const imageDoc = await transaction.get(imageRef);
         if (!imageDoc.exists) {
@@ -174,8 +174,6 @@ export const toggleImageLike = async (image: ImageMeta, user: User) => {
     });
 
     // Phase 2: If the transaction resulted in a "like", create a notification.
-    // This runs outside the transaction. It's a common pattern to ensure the core
-    // action succeeds without being blocked by secondary operations like notifications.
     if (transactionResult?.wasLike && user.uid !== transactionResult.uploaderUid) {
         try {
             await db.collection("notifications").add({
@@ -190,7 +188,7 @@ export const toggleImageLike = async (image: ImageMeta, user: User) => {
                 read: false,
             });
         } catch (notificationError) {
-            // Log the error but don't re-throw it, as the main "like" action was successful.
+            // Log the error but don't re-throw it.
             console.error("Failed to create like notification:", notificationError);
         }
     }
@@ -221,4 +219,41 @@ export const markNotificationsAsRead = async (notificationIds: string[]) => {
         batch.update(notifRef, { read: true });
     });
     await batch.commit();
+};
+
+// --- User Profile Services ---
+
+export const getUserProfile = async (uid: string): Promise<ProfileUser | null> => {
+    try {
+        const doc = await db.collection("users").doc(uid).get();
+        if (doc.exists) {
+            return { uploaderUid: doc.id, ...doc.data() } as ProfileUser;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error getting user profile:", error);
+        return null;
+    }
+};
+
+export const updateUserProfile = async (uid: string, data: Partial<ProfileUser>) => {
+    try {
+        // 1. Update Firestore 'users' collection
+        await db.collection("users").doc(uid).set(data, { merge: true });
+        
+        // 2. Update Firebase Auth Profile if necessary (display name / photo)
+        // This ensures that next time user logs in or when using simple auth checks, data is consistent.
+        const user = auth.currentUser;
+        if (user && user.uid === uid) {
+             if (data.uploaderName || data.uploaderPhotoURL) {
+                 await user.updateProfile({
+                     displayName: data.uploaderName || user.displayName,
+                     photoURL: data.uploaderPhotoURL || user.photoURL
+                 });
+             }
+        }
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        throw error;
+    }
 };

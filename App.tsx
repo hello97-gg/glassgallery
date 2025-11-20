@@ -56,44 +56,37 @@ const smartSortImages = (images: ImageMeta[]): ImageMeta[] => {
 
   return images
     .map((image: ImageMeta): ImageWithScore => {
-      // Handle potential missing timestamps during optimistic UI updates
       const uploadedAt = image.uploadedAt?.toDate ? image.uploadedAt.toDate().getTime() : now;
       const ageInHours = (now - uploadedAt) / (1000 * 60 * 60);
 
       // 1. Recency Score (Aggressive Exponential Decay)
-      // We want fresh content to explode onto the feed.
       let recencyScore = 0;
       if (ageInHours < 0.5) {
-          recencyScore = 3000; // INSTANT: Last 30 mins
+          recencyScore = 3000; 
       } else if (ageInHours < 4) {
-          recencyScore = 1500; // FRESH: Last 4 hours
+          recencyScore = 1500; 
       } else if (ageInHours < 24) {
-          recencyScore = 800;  // TODAY: Last 24 hours
+          recencyScore = 800;  
       } else if (ageInHours < 72) {
-          recencyScore = 300;  // RECENT: Last 3 days
+          recencyScore = 300;  
       } else {
-          // Older content drops off fast, but can be saved by massive popularity
           recencyScore = 100 / (Math.max(1, ageInHours / 24)); 
       }
 
       // 2. Popularity/Dopamine Score
-      // High likes and downloads keep users engaged with quality content.
       const likeCount = image.likeCount || 0;
       const downloadCount = image.downloadCount || 0;
-      // Likes are heavily weighted for social proof.
       const popularityScore = (likeCount * 15) + (downloadCount * 5); 
 
       // 3. Variable Reward (Randomness)
-      // Ensures the feed never looks exactly the same, triggering "slot machine" psychology.
       const randomFactor = Math.random() * 250;
 
-      // Final Score Calculation
       const finalScore = recencyScore + popularityScore + randomFactor;
 
       return { ...image, sortScore: finalScore };
     })
-    .sort((a, b) => (b.sortScore ?? 0) - (a.sortScore ?? 0)) // Sort descending by score
-    .map(({ sortScore, ...rest }) => rest); // Remove the temporary score property
+    .sort((a, b) => (b.sortScore ?? 0) - (a.sortScore ?? 0)) 
+    .map(({ sortScore, ...rest }) => rest); 
 };
 
 
@@ -113,7 +106,6 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // State for image handling
   const [allImages, setAllImages] = useState<ImageMeta[]>([]);
   const [displayedImages, setDisplayedImages] = useState<ImageMeta[]>([]);
   const [imagesLoading, setImagesLoading] = useState(true);
@@ -127,21 +119,21 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile' | 'notifications'>('home');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [lastView, setLastView] = useState<'home' | 'explore'>('home');
+  
+  // New state for Explore search
+  const [exploreSearchTerm, setExploreSearchTerm] = useState('');
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
-  // State for full-screen drag and drop
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const dragCounter = useRef(0);
 
 
   useEffect(() => {
-    // Fix: Use v8 compat syntax for onAuthStateChanged.
     const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
-      // Close login modal if user signs in successfully
       if (currentUser) {
         setLoginModalOpen(false);
       }
@@ -164,9 +156,9 @@ const App: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const imageId = params.get('image');
     const userId = params.get('user');
+    const searchTerm = params.get('search');
 
     if (imageId) {
-      // If URL has ?image=ID, subscribe to it and open modal
       const unsubscribe = subscribeToImage(imageId, (img) => {
         if (img) {
           setSelectedImage(img);
@@ -176,35 +168,29 @@ const App: React.FC = () => {
     }
     
     if (userId) {
-      // If URL has ?user=ID, fetch user data (mocked from images for now as we don't have a users collection)
-      // In a real app, you'd fetch the user profile directly. 
-      // Here we fetch their images to reconstruct the profile header.
-      getImagesByUploader(userId).then(({ images }) => {
-        if (images.length > 0) {
-            const first = images[0];
-            const profile: ProfileUser = {
-                uploaderUid: first.uploaderUid,
-                uploaderName: first.uploaderName,
-                uploaderPhotoURL: first.uploaderPhotoURL
-            };
-            setProfileUser(profile);
-            setActiveView('profile');
-        }
-      });
+      // Construct a basic profile user. The ProfilePage will fetch rich data.
+      // We ideally need name/photo to show *something* immediately or just pass ID.
+      // For now, we just pass the ID and let ProfilePage handle fetching.
+       const profile: ProfileUser = {
+           uploaderUid: userId,
+           uploaderName: 'Loading...',
+           uploaderPhotoURL: ''
+       };
+       setProfileUser(profile);
+       setActiveView('profile');
+    } else if (searchTerm) {
+        setExploreSearchTerm(searchTerm);
+        setActiveView('explore');
     }
   }, []);
 
-  // Helper to update URL without page reload
-  const updateURL = (params: { image?: string; user?: string } | null) => {
+  const updateURL = (params: { image?: string; user?: string; search?: string } | null) => {
     const url = new URL(window.location.href);
-    url.search = ''; // Clear existing
+    url.search = ''; 
     
-    if (params?.image) {
-        url.searchParams.set('image', params.image);
-    }
-    if (params?.user) {
-        url.searchParams.set('user', params.user);
-    }
+    if (params?.image) url.searchParams.set('image', params.image);
+    if (params?.user) url.searchParams.set('user', params.user);
+    if (params?.search) url.searchParams.set('search', params.search);
     
     window.history.pushState({}, '', url.toString());
   };
@@ -214,14 +200,12 @@ const App: React.FC = () => {
     let unsubscribe: () => void;
 
     if (activeView === 'home' || activeView === 'explore') {
-        // Only show loading spinner if we have NO images at all
         if (allImages.length === 0) {
             setImagesLoading(true);
         }
         
         unsubscribe = subscribeToImages((fetchedImages) => {
             setAllImages((prevImages) => {
-                 // 1. First load: Sort intelligently with the aggressive algorithm
                  if (prevImages.length === 0) {
                      const sorted = smartSortImages(fetchedImages);
                      setDisplayedImages(sorted.slice(0, PAGE_SIZE));
@@ -230,22 +214,15 @@ const App: React.FC = () => {
                      return sorted;
                  }
                  
-                 // 2. Real-time Updates:
                  const newMap = new Map(fetchedImages.map(i => [i.id, i]));
-                 
-                 // Identify brand new uploads that weren't in our previous state
                  const currentIds = new Set(prevImages.map(i => i.id));
                  const newUploads = fetchedImages.filter(i => !currentIds.has(i.id));
 
-                 // Update existing images in the list (e.g., like counts changed) without reordering them
-                 // This prevents the feed from jumping around while the user is reading.
                  let updatedList = prevImages
                     .filter(img => newMap.has(img.id))
                     .map(img => newMap.get(img.id)!);
                  
-                 // AGGRESSIVE: Inject new uploads immediately at the TOP
                  if (newUploads.length > 0) {
-                     // Sort new uploads by time (newest first) just in case multiple arrived
                      const sortedNew = newUploads.sort((a, b) => {
                          const timeA = a.uploadedAt?.toDate ? a.uploadedAt.toDate().getTime() : 0;
                          const timeB = b.uploadedAt?.toDate ? b.uploadedAt.toDate().getTime() : 0;
@@ -254,14 +231,11 @@ const App: React.FC = () => {
                      updatedList = [...sortedNew, ...updatedList];
                  }
                  
-                 // Sync displayed images: Update data AND prepend new uploads
                  setDisplayedImages(prevDisplayed => {
-                    // Update data of currently displayed cards
                     let updatedDisplayed = prevDisplayed
-                        .filter(d => newMap.has(d.id)) // Remove deleted
-                        .map(d => newMap.get(d.id)!); // Update counts/meta
+                        .filter(d => newMap.has(d.id)) 
+                        .map(d => newMap.get(d.id)!); 
                     
-                    // If there are new uploads, SHOW THEM NOW
                     if (newUploads.length > 0) {
                          const sortedNew = newUploads.sort((a, b) => {
                              const timeA = a.uploadedAt?.toDate ? a.uploadedAt.toDate().getTime() : 0;
@@ -285,14 +259,13 @@ const App: React.FC = () => {
     };
   }, [activeView]);
 
-  // Sync selectedImage with allImages updates to show real-time counts in modal if open
+  // Sync selectedImage
   useEffect(() => {
     if (selectedImage && allImages.length > 0) {
         const updated = allImages.find(img => img.id === selectedImage.id);
         if (updated && updated !== selectedImage) {
             setSelectedImage(updated);
         } else if (!updated) {
-             // Image was deleted remotely
              setSelectedImage(null);
         }
     }
@@ -307,7 +280,6 @@ const App: React.FC = () => {
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(nextIndex);
     } else {
-        // Infinite Scroll Loop
         const newImages = allImages.slice(0, PAGE_SIZE);
         setDisplayedImages(prev => [...prev, ...newImages]);
     }
@@ -326,12 +298,11 @@ const App: React.FC = () => {
     };
     
     const throttledScrollHandler = throttle(handleScroll, 200);
-
     window.addEventListener('scroll', throttledScrollHandler);
     return () => window.removeEventListener('scroll', throttledScrollHandler);
   }, [loadMoreImages, activeView]);
 
-  // --- Full-screen drag-and-drop handlers ---
+  // --- Full-screen drag-and-drop ---
   const handleDragEnter = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -386,7 +357,6 @@ const App: React.FC = () => {
     window.addEventListener('dragleave', handleDragLeave);
     window.addEventListener('dragover', handleDragOver);
     window.addEventListener('drop', handleDrop);
-
     return () => {
         window.removeEventListener('dragenter', handleDragEnter);
         window.removeEventListener('dragleave', handleDragLeave);
@@ -406,10 +376,16 @@ const App: React.FC = () => {
         setSelectedImage(fullImage);
         updateURL({ image: fullImage.id });
     } else if (partialImage.id) {
-        // If not in feed, update URL so generic subscription picks it up
         updateURL({ image: partialImage.id });
     }
   };
+  
+  const handleLocationClick = (location: string) => {
+      setExploreSearchTerm(location);
+      setActiveView('explore');
+      updateURL({ search: location });
+      setSelectedImage(null);
+  }
 
   const handleUploadSuccess = () => {
     setUploadModalOpen(false);
@@ -454,14 +430,18 @@ const App: React.FC = () => {
              setCurrentIndex(PAGE_SIZE);
              return reshuffled;
         });
+        if (view === 'explore') {
+            setExploreSearchTerm('');
+            updateURL(null);
+        }
     } else {
         setActiveView(view);
         setProfileUser(null);
+        setExploreSearchTerm('');
         updateURL(null);
     }
   }
 
-  // Kept for optimistic updates
   const handleImageUpdate = (updatedImage: ImageMeta) => {
     const updater = (prevImages: ImageMeta[]) => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img);
     setDisplayedImages(updater);
@@ -520,7 +500,15 @@ const App: React.FC = () => {
                     type="profile"
                     url={window.location.href}
                 />
-                <ProfilePage user={profileUser} loggedInUser={user} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
+                <ProfilePage 
+                    user={profileUser} 
+                    loggedInUser={user} 
+                    onBack={handleBack} 
+                    onImageClick={handleImageClick} 
+                    onViewProfile={handleViewProfile} 
+                    onLikeToggle={handleLikeToggle}
+                    onLocationClick={handleLocationClick}
+                />
             </>
         );
     }
@@ -533,7 +521,14 @@ const App: React.FC = () => {
                     description="Discover trending categories and tags on Glass Gallery."
                     url={window.location.href}
                 />
-                <ExplorePage images={allImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
+                <ExplorePage 
+                    images={allImages} 
+                    user={user} 
+                    onImageClick={handleImageClick} 
+                    onViewProfile={handleViewProfile} 
+                    onLikeToggle={handleLikeToggle}
+                    initialSearchTerm={exploreSearchTerm}
+                />
             </>
         );
     }
@@ -616,6 +611,8 @@ const App: React.FC = () => {
             setSelectedImage(null);
             if (activeView === 'profile' && profileUser) {
                 updateURL({ user: profileUser.uploaderUid });
+            } else if (activeView === 'explore' && exploreSearchTerm) {
+                updateURL({ search: exploreSearchTerm });
             } else {
                 updateURL(null);
             }
@@ -624,6 +621,7 @@ const App: React.FC = () => {
           onImageUpdate={handleImageUpdate}
           onImageDelete={handleImageDelete}
           onLikeToggle={handleLikeToggle}
+          onLocationClick={handleLocationClick}
         />
       )}
     </div>

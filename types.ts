@@ -19,6 +19,7 @@ export interface ImageMeta {
   likeCount?: number;
   likedBy?: string[];
   downloadCount?: number;
+  location?: string;
 }
 
 export interface License {
@@ -31,6 +32,10 @@ export interface ProfileUser {
   uploaderUid: string;
   uploaderName: string;
   uploaderPhotoURL: string;
+  backgroundImageURL?: string;
+  location?: string;
+  email?: string;
+  bio?: string;
 }
 
 export interface Notification {

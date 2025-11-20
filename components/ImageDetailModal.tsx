@@ -16,6 +16,7 @@ interface ImageDetailModalProps {
   onImageUpdate: (updatedImage: ImageMeta) => void;
   onImageDelete: (imageId: string) => void;
   onLikeToggle: (image: ImageMeta) => void;
+  onLocationClick?: (location: string) => void;
 }
 
 const InfoChip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -103,37 +104,37 @@ const HeartIconOutline = () => (
 );
 
 
-const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClose, onViewProfile, onImageUpdate, onImageDelete, onLikeToggle }) => {
-  // Use local state to track real-time updates for the modal specifically
+const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClose, onViewProfile, onImageUpdate, onImageDelete, onLikeToggle, onLocationClick }) => {
   const [currentImage, setCurrentImage] = useState<ImageMeta>(image);
-  
   const [isEditing, setIsEditing] = useState(false);
+  
   const [editedTitle, setEditedTitle] = useState(image.title || '');
   const [editedDescription, setEditedDescription] = useState(image.description || '');
+  const [editedLocation, setEditedLocation] = useState(image.location || '');
   const [editedLicense, setEditedLicense] = useState(image.license);
   const [editedLicenseUrl, setEditedLicenseUrl] = useState(image.licenseUrl || '');
   const [editedFlags, setEditedFlags] = useState<string[]>(image.flags || []);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAttribution, setShowAttribution] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
-  
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const lastTap = useRef<number>(0);
 
   useEffect(() => {
     const unsubscribe = subscribeToImage(image.id, (updatedImage) => {
-        setCurrentImage(updatedImage);
+        if (updatedImage) setCurrentImage(updatedImage);
     });
     return () => unsubscribe();
   }, [image.id]);
   
-  // Update local state if parent props change (e.g. swapping images in feed)
   useEffect(() => {
     setCurrentImage(image);
     setEditedTitle(image.title || '');
     setEditedDescription(image.description || '');
+    setEditedLocation(image.location || '');
     setEditedLicense(image.license);
     setEditedLicenseUrl(image.licenseUrl || '');
     setEditedFlags(image.flags || []);
@@ -150,19 +151,27 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     });
   };
 
+  const handleLocationClick = () => {
+      if (currentImage.location && onLocationClick) {
+          onLocationClick(currentImage.location);
+          onClose();
+      }
+  }
+
   const handleEditToggle = () => {
     if (isEditing) {
-      // Cancel edit
+      // Cancel
       setEditedTitle(currentImage.title || '');
       setEditedDescription(currentImage.description || '');
+      setEditedLocation(currentImage.location || '');
       setEditedLicense(currentImage.license);
       setEditedLicenseUrl(currentImage.licenseUrl || '');
       setEditedFlags(currentImage.flags || []);
       setError(null);
     } else {
-      // Start edit - sync with current values
       setEditedTitle(currentImage.title || '');
       setEditedDescription(currentImage.description || '');
+      setEditedLocation(currentImage.location || '');
       setEditedLicense(currentImage.license);
       setEditedLicenseUrl(currentImage.licenseUrl || '');
       setEditedFlags(currentImage.flags || []);
@@ -187,6 +196,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
       const updates = {
         title: editedTitle,
         description: editedDescription,
+        location: editedLocation,
         license: editedLicense,
         flags: editedFlags,
         licenseUrl: editedLicense === 'Other' ? editedLicenseUrl : '',
@@ -236,10 +246,8 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   };
 
   const handleShare = async () => {
-    // CHANGED: Use the Serverless Share API for rich previews
     const origin = window.location.origin;
     const shareUrl = `${origin}/api/share?id=${currentImage.id}`;
-
     const shareData = {
         title: currentImage.title || 'Glass Gallery Image',
         text: `Check out this image by ${currentImage.uploaderName} on Glass Gallery!`,
@@ -247,20 +255,13 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     };
 
     if (navigator.share) {
-        try {
-            await navigator.share(shareData);
-        } catch (err) {
-            console.log("Share cancelled or failed:", err);
-        }
+        try { await navigator.share(shareData); } catch (err) { console.log("Share cancelled", err); }
     } else {
-        // Fallback to clipboard
         try {
             await navigator.clipboard.writeText(shareUrl);
             setShareCopied(true);
             setTimeout(() => setShareCopied(false), 2000);
-        } catch (err) {
-            console.error("Failed to copy to clipboard", err);
-        }
+        } catch (err) { console.error("Failed to copy", err); }
     }
   };
 
@@ -286,9 +287,14 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
              <input type="text" id="title-edit" value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent text-sm" />
           </div>
           <div>
+             <label htmlFor="loc-edit" className="font-semibold mb-2 text-secondary text-sm block">Location</label>
+             <input type="text" id="loc-edit" value={editedLocation} onChange={(e) => setEditedLocation(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent text-sm" />
+          </div>
+          <div>
              <label htmlFor="desc-edit" className="font-semibold mb-2 text-secondary text-sm block">Description</label>
              <textarea id="desc-edit" value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} rows={3} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent text-sm" />
           </div>
+          {/* ... License and Tags inputs same as before ... */}
           <div>
             <label htmlFor="license-edit" className="font-semibold mb-2 text-secondary text-sm block">License</label>
             <select id="license-edit" value={editedLicense} onChange={(e) => setEditedLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-primary">
@@ -323,30 +329,46 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     return (
       <div className="space-y-4">
          {(currentImage.title || currentImage.description) && (
-            <div className="mb-4">
+            <div className="mb-2">
                  {currentImage.title && <h1 className="text-2xl font-bold text-primary mb-2">{currentImage.title}</h1>}
                  {currentImage.description && <p className="text-primary/80 text-sm whitespace-pre-wrap leading-relaxed">{currentImage.description}</p>}
             </div>
          )}
+         
+         {currentImage.location && (
+            <div>
+                <h4 className="font-semibold mb-1 text-secondary text-sm">Location</h4>
+                <button 
+                    onClick={handleLocationClick} 
+                    className={`flex items-center gap-1 text-sm font-medium ${onLocationClick ? 'text-accent hover:underline' : 'text-primary'}`}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {currentImage.location}
+                </button>
+            </div>
+         )}
 
-        <div>
-            <h4 className="font-semibold mb-2 text-secondary text-sm">Downloads</h4>
-            <InfoChip>{(currentImage.downloadCount || 0).toLocaleString()}</InfoChip>
+        <div className="flex gap-6">
+             <div>
+                <h4 className="font-semibold mb-1 text-secondary text-sm">Downloads</h4>
+                <InfoChip>{(currentImage.downloadCount || 0).toLocaleString()}</InfoChip>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-1 text-secondary text-sm">License</h4>
+              {currentImage.license === 'Other' && currentImage.licenseUrl ? (
+                 <a href={currentImage.licenseUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-border text-accent hover:underline text-xs font-medium px-2.5 py-1 rounded-full">
+                    {licenseName}
+                 </a>
+              ) : licenseExplanationUrl ? (
+                 <a href={licenseExplanationUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-border text-secondary hover:text-primary hover:underline text-xs font-medium px-2.5 py-1 rounded-full transition-colors">
+                    {licenseName}
+                 </a>
+              ) : (
+                <InfoChip>{licenseName}</InfoChip>
+              )}
+            </div>
         </div>
-        <div>
-          <h4 className="font-semibold mb-2 text-secondary text-sm">License</h4>
-          {currentImage.license === 'Other' && currentImage.licenseUrl ? (
-             <a href={currentImage.licenseUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-border text-accent hover:underline text-xs font-medium mr-2 px-2.5 py-1 rounded-full">
-                {licenseName} (Custom URL)
-             </a>
-          ) : licenseExplanationUrl ? (
-             <a href={licenseExplanationUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-border text-secondary hover:text-primary hover:underline text-xs font-medium mr-2 px-2.5 py-1 rounded-full transition-colors">
-                {licenseName}
-             </a>
-          ) : (
-            <InfoChip>{licenseName}</InfoChip>
-          )}
-        </div>
+
         {currentImage.flags && currentImage.flags.length > 0 && (
           <div>
             <h4 className="font-semibold mb-2 text-secondary text-sm">Tags</h4>
@@ -363,7 +385,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <SEOHead 
         title={currentImage.title || `Image by ${currentImage.uploaderName}`}
-        description={currentImage.description || `Check out this amazing image uploaded by ${currentImage.uploaderName}.`}
+        description={currentImage.description || `Check out this amazing image.`}
         imageUrl={currentImage.imageUrl}
         url={window.location.href}
         type="article"
@@ -384,6 +406,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
                     </svg>
                 </div>
             )}
+            {/* Overlays */}
             <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button onClick={handleShare} title="Share Image" className="bg-surface/70 backdrop-blur-sm p-2 rounded-full text-primary hover:bg-surface transition-all scale-90 hover:scale-100 relative">
                     {shareCopied ? (
@@ -404,9 +427,9 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
         <div className="md:w-1/3 p-6 flex flex-col space-y-4 overflow-y-auto text-primary relative">
           <button onClick={onClose} className="absolute top-4 right-4 text-3xl font-light text-secondary hover:text-primary">&times;</button>
           
-          <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
+          <div className="flex items-start justify-between gap-4 border-b border-border pb-4 mt-6 md:mt-0">
             <button onClick={handleProfileClick} className="flex-grow text-left flex items-center gap-3 hover:bg-border/50 p-2 -m-2 rounded-lg transition-colors">
-              <img src={currentImage.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${currentImage.uploaderName}&backgroundColor=ff5722,e91e63,9c27b0,673ab7,3f51b5,2196f3,03a9f4,00bcd4,009688,4caf50,8bc34a,cddc39,ffeb3b,ffc107,ff9800`} alt={currentImage.uploaderName} className="w-12 h-12 rounded-full" />
+              <img src={currentImage.uploaderPhotoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${currentImage.uploaderName}`} alt={currentImage.uploaderName} className="w-12 h-12 rounded-full object-cover" />
               <div>
                 <p className="font-semibold">{currentImage.uploaderName}</p>
                 <p className="text-xs text-secondary">Uploaded on {new Date(currentImage.uploadedAt?.toDate()).toLocaleDateString()}</p>
@@ -420,30 +443,9 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
           
           <div className="flex-grow space-y-4">
             {renderDetails()}
-             <div>
-                <h4 className="font-semibold mb-1 text-secondary text-sm">Image URL</h4>
-                <div className="relative">
-                    <input type="text" readOnly value={currentImage.imageUrl} className="w-full bg-background border border-border rounded-md py-1 px-2 text-xs text-secondary pr-8 select-all" />
-                    <button onClick={() => navigator.clipboard.writeText(currentImage.imageUrl)} className="absolute top-1/2 right-1 -translate-y-1/2 p-1 text-secondary hover:text-primary" title="Copy URL">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            {currentImage.originalWorkUrl && (
-              <div>
-                  <h4 className="font-semibold mb-1 text-secondary text-sm">Original Work</h4>
-                  <a href={currentImage.originalWorkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline break-all">
-                      {currentImage.originalWorkUrl}
-                  </a>
-              </div>
-            )}
+            
              <div className="pt-2">
                 <Button onClick={handleShare} variant="secondary" fullWidth className="gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
                     {shareCopied ? "Link Copied!" : "Share Image"}
                 </Button>
              </div>

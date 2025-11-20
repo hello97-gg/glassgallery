@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import type { ImageMeta, ProfileUser } from '../types';
 import ImageGrid from './ImageGrid';
@@ -11,6 +11,7 @@ interface ExplorePageProps {
   onImageClick: (image: ImageMeta) => void;
   onViewProfile: (user: ProfileUser) => void;
   onLikeToggle: (image: ImageMeta) => void;
+  initialSearchTerm?: string;
 }
 
 const CategoryCard: React.FC<{ flag: string, image: ImageMeta, onClick: () => void }> = ({ flag, image, onClick }) => {
@@ -24,9 +25,15 @@ const CategoryCard: React.FC<{ flag: string, image: ImageMeta, onClick: () => vo
   );
 };
 
-const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, onViewProfile, onLikeToggle }) => {
+const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, onViewProfile, onLikeToggle, initialSearchTerm = '' }) => {
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchTerm);
+
+  useEffect(() => {
+    if (initialSearchTerm) {
+        setSearchQuery(initialSearchTerm);
+    }
+  }, [initialSearchTerm]);
 
   // Aggregate images by tags (flags)
   const imagesByFlag = useMemo(() => {
@@ -55,8 +62,9 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
         const descMatch = img.description?.toLowerCase().includes(lowerQuery);
         const flagMatch = img.flags?.some(f => f.toLowerCase().includes(lowerQuery));
         const uploaderMatch = img.uploaderName.toLowerCase().includes(lowerQuery);
+        const locationMatch = img.location?.toLowerCase().includes(lowerQuery);
         
-        return titleMatch || descMatch || flagMatch || uploaderMatch;
+        return titleMatch || descMatch || flagMatch || uploaderMatch || locationMatch;
     });
   }, [images, searchQuery]);
 
@@ -77,12 +85,17 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
                     </div>
                     <input 
                         type="text"
-                        placeholder="Search tags, titles, users..."
+                        placeholder="Search tags, users, locations..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         autoFocus
                         className="block w-full pl-10 pr-16 py-2 border border-border rounded-full leading-5 bg-surface text-primary placeholder-secondary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent sm:text-sm transition-all shadow-sm"
                     />
+                     {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-12 pr-2 flex items-center text-secondary hover:text-primary">
+                           &times;
+                        </button>
+                    )}
                     <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent text-surface tracking-wider">
                             BETA
@@ -99,7 +112,8 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <h3 className="mt-2 text-sm font-medium text-primary">No matches found</h3>
-                    <p className="mt-1 text-sm text-secondary">Try searching for something else like "Abstract" or "Nature".</p>
+                    <p className="mt-1 text-sm text-secondary">Try searching for something else like "Tokyo" or "Abstract".</p>
+                    <Button onClick={() => setSearchQuery('')} variant="secondary" size="sm" className="mt-4">Clear Search</Button>
                 </div>
             )}
         </div>
@@ -148,7 +162,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ images, user, onImageClick, o
                 </div>
                 <input 
                     type="text"
-                    placeholder="Search images, tags, users..."
+                    placeholder="Search images, tags, users, locations..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="block w-full pl-10 pr-16 py-2 border border-border rounded-full leading-5 bg-surface text-primary placeholder-secondary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent sm:text-sm transition-all shadow-sm"

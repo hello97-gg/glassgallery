@@ -20,6 +20,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
   const [preview, setPreview] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [location, setLocation] = useState('');
   const [license, setLicense] = useState<string>(LICENSES[0].value);
   const [licenseUrl, setLicenseUrl] = useState('');
   const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
@@ -134,7 +135,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     setError(null);
     try {
       const { url: imageUrl } = await uploadToCatbox(file);
-      await addImageToFirestore(user, imageUrl, title, description, license, selectedFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '');
+      await addImageToFirestore(user, imageUrl, title, description, license, selectedFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '', location);
       onUploadSuccess();
     } catch (err) {
       setError('Upload failed. Please try again.');
@@ -195,10 +196,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                       <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="My Amazing Image" />
                    </div>
                    <div>
-                      <label htmlFor="license" className="block text-sm font-medium text-secondary">License</label>
-                      <select id="license" value={license} onChange={(e) => setLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-primary">
-                          {LICENSES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                      </select>
+                      <label htmlFor="location" className="block text-sm font-medium text-secondary">Location (Optional)</label>
+                      <input type="text" id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="Tokyo, Japan" />
                    </div>
                 </div>
 
@@ -206,13 +205,22 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
                     <label htmlFor="description" className="block text-sm font-medium text-secondary">Description (Optional)</label>
                     <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="Tell us about your image..." />
                 </div>
-                
-                {license === 'Other' && (
-                  <div>
-                    <label htmlFor="licenseUrl" className="block text-sm font-medium text-secondary">License URL</label>
-                    <input type="url" id="licenseUrl" value={licenseUrl} onChange={(e) => setLicenseUrl(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="https://creativecommons.org/licenses/by/4.0/" required />
-                  </div>
-                )}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                   <div>
+                      <label htmlFor="license" className="block text-sm font-medium text-secondary">License</label>
+                      <select id="license" value={license} onChange={(e) => setLicense(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-accent focus:border-accent sm:text-sm text-primary">
+                          {LICENSES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                      </select>
+                   </div>
+                    {license === 'Other' && (
+                      <div>
+                        <label htmlFor="licenseUrl" className="block text-sm font-medium text-secondary">License URL</label>
+                        <input type="url" id="licenseUrl" value={licenseUrl} onChange={(e) => setLicenseUrl(e.target.value)} className="mt-1 block w-full bg-background border border-border rounded-md shadow-sm py-2 px-3 text-primary focus:outline-none focus:ring-accent focus:border-accent" placeholder="https://creativecommons.org/licenses/by/4.0/" required />
+                      </div>
+                    )}
+                </div>
+
 
                 <div>
                     <label className="block text-sm font-medium text-secondary">Tags (select at least one)</label>
