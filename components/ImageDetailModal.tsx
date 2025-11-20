@@ -236,7 +236,10 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   };
 
   const handleShare = async () => {
-    const shareUrl = window.location.href; // Already updated by App.tsx to include ?image=ID
+    // CHANGED: Use the Serverless Share API for rich previews
+    const origin = window.location.origin;
+    const shareUrl = `${origin}/api/share?id=${currentImage.id}`;
+
     const shareData = {
         title: currentImage.title || 'Glass Gallery Image',
         text: `Check out this image by ${currentImage.uploaderName} on Glass Gallery!`,
