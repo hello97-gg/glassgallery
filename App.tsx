@@ -501,6 +501,7 @@ const App: React.FC = () => {
                     url={window.location.href}
                 />
                 <ProfilePage 
+                    key={profileUser.uploaderUid}
                     user={profileUser} 
                     loggedInUser={user} 
                     onBack={handleBack} 

@@ -38,10 +38,22 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // 1. Fetch full profile data from 'users' collection
+  // 1. Sync state with props immediately if user changes (Defensive programming)
+  useEffect(() => {
+    if (user.uploaderUid !== profileData.uploaderUid) {
+        setProfileData(user);
+    }
+  }, [user, profileData.uploaderUid]);
+
+  // 2. Fetch full profile data from 'users' collection
   useEffect(() => {
     let mounted = true;
     const fetchProfile = async () => {
+        // Ensure we show the latest user basic info while loading extended info
+        if (user.uploaderUid !== profileData.uploaderUid) {
+            setProfileData(user);
+        }
+
         const fullProfile = await getUserProfile(user.uploaderUid);
         if (mounted && fullProfile) {
             setProfileData(prev => ({ ...prev, ...fullProfile }));
@@ -51,7 +63,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
     return () => { mounted = false; };
   }, [user.uploaderUid]);
 
-  // 2. Fetch images
+  // 3. Fetch images
   const fetchUserImages = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -99,7 +111,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, loggedInUser, onBack, o
 
   const totalLikes = useMemo(() => allImages.reduce((sum, img) => sum + (img.likeCount || 0), 0), [allImages]);
   const totalDownloads = useMemo(() => allImages.reduce((sum, img) => sum + (img.downloadCount || 0), 0), [allImages]);
-  const isOwner = loggedInUser?.uid === user.uploaderUid;
+  
+  // Secure check: ensure we only show edit controls if logged in user matches the currently displayed profile data
+  const isOwner = loggedInUser?.uid === profileData.uploaderUid;
 
   return (
     <div className="animate-fade-in pb-10">
