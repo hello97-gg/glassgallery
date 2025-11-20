@@ -6,6 +6,7 @@ import { LICENSES, FLAGS } from '../constants';
 import { updateImageDetails, deleteImageFromFirestore, incrementDownloadCount, subscribeToImage } from '../services/firestoreService';
 import Button from './Button';
 import Spinner from './Spinner';
+import SEOHead from './SEOHead';
 
 interface ImageDetailModalProps {
   image: ImageMeta;
@@ -34,7 +35,6 @@ const AttributionModal: React.FC<{ image: ImageMeta, onClose: () => void }> = ({
   if (hasOriginalWork) {
       let sourceText = 'the original source';
       try {
-          // Extract hostname for display, e.g., "unsplash.com"
           const hostname = new URL(image.originalWorkUrl!).hostname;
           sourceText = hostname.replace(/^www\./, '');
       } catch (e) { /* Fallback is fine */ }
@@ -117,6 +117,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAttribution, setShowAttribution] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const lastTap = useRef<number>(0);
@@ -131,6 +132,11 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   // Update local state if parent props change (e.g. swapping images in feed)
   useEffect(() => {
     setCurrentImage(image);
+    setEditedTitle(image.title || '');
+    setEditedDescription(image.description || '');
+    setEditedLicense(image.license);
+    setEditedLicenseUrl(image.licenseUrl || '');
+    setEditedFlags(image.flags || []);
   }, [image]);
 
   const isOwner = user?.uid === currentImage.uploaderUid;
@@ -186,7 +192,6 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
         licenseUrl: editedLicense === 'Other' ? editedLicenseUrl : '',
       };
       await updateImageDetails(currentImage.id, updates);
-      // Optimistic update passed to parent
       onImageUpdate({ ...currentImage, ...updates });
       setIsEditing(false);
     } catch (err) {
@@ -205,10 +210,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   };
 
   const handleDownload = async () => {
-    // Increment download count immediately on server
     incrementDownloadCount(currentImage.id);
-    
-    // Optimistically update UI (although subscription will catch it too)
     setCurrentImage(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
     onImageUpdate({ ...currentImage, downloadCount: (currentImage.downloadCount || 0) + 1 });
 
@@ -233,11 +235,36 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     }
   };
 
+  const handleShare = async () => {
+    const shareUrl = window.location.href; // Already updated by App.tsx to include ?image=ID
+    const shareData = {
+        title: currentImage.title || 'Glass Gallery Image',
+        text: `Check out this image by ${currentImage.uploaderName} on Glass Gallery!`,
+        url: shareUrl
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (err) {
+            console.log("Share cancelled or failed:", err);
+        }
+    } else {
+        // Fallback to clipboard
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            setShareCopied(true);
+            setTimeout(() => setShareCopied(false), 2000);
+        } catch (err) {
+            console.error("Failed to copy to clipboard", err);
+        }
+    }
+  };
+
   const handleDoubleTap = (e: React.MouseEvent | React.TouchEvent) => {
       const now = Date.now();
       const DOUBLE_TAP_DELAY = 300;
       if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-          // Double tap detected
           if (!hasLiked) {
               onLikeToggle(currentImage);
           }
@@ -331,6 +358,14 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <SEOHead 
+        title={currentImage.title || `Image by ${currentImage.uploaderName}`}
+        description={currentImage.description || `Check out this amazing image uploaded by ${currentImage.uploaderName}.`}
+        imageUrl={currentImage.imageUrl}
+        url={window.location.href}
+        type="article"
+      />
+
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="md:w-2/3 bg-background flex items-center justify-center p-2 relative group select-none">
             <img 
@@ -346,11 +381,22 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
                     </svg>
                 </div>
             )}
-            <button onClick={handleDownload} title="Download Image" className="absolute top-4 right-4 bg-surface/70 backdrop-blur-sm p-2 rounded-full text-primary hover:bg-surface transition-all opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-            </button>
+            <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button onClick={handleShare} title="Share Image" className="bg-surface/70 backdrop-blur-sm p-2 rounded-full text-primary hover:bg-surface transition-all scale-90 hover:scale-100 relative">
+                    {shareCopied ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                    )}
+                </button>
+                <button onClick={handleDownload} title="Download Image" className="bg-surface/70 backdrop-blur-sm p-2 rounded-full text-primary hover:bg-surface transition-all scale-90 hover:scale-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                </button>
+            </div>
         </div>
         <div className="md:w-1/3 p-6 flex flex-col space-y-4 overflow-y-auto text-primary relative">
           <button onClick={onClose} className="absolute top-4 right-4 text-3xl font-light text-secondary hover:text-primary">&times;</button>
@@ -390,6 +436,14 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
                   </a>
               </div>
             )}
+             <div className="pt-2">
+                <Button onClick={handleShare} variant="secondary" fullWidth className="gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    {shareCopied ? "Link Copied!" : "Share Image"}
+                </Button>
+             </div>
           </div>
           
           {isOwner && (

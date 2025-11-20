@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { subscribeToImages, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike, PAGE_SIZE } from './services/firestoreService';
+import { subscribeToImages, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike, PAGE_SIZE, subscribeToImage, getImagesByUploader } from './services/firestoreService';
 import type { ImageMeta, ProfileUser, Notification } from './types';
 
 import Sidebar from './components/Header';
@@ -16,6 +16,7 @@ import ExplorePage from './components/ExplorePage';
 import ProfilePage from './components/ProfilePage';
 import { MobileNotificationsModal } from './components/Notifications';
 import FullScreenDropzone from './components/FullScreenDropzone';
+import SEOHead from './components/SEOHead';
 
 // --- Skeleton Components for Initial Load ---
 const SKELETON_HEIGHTS = ['min-h-[200px]', 'min-h-[280px]', 'min-h-[360px]', 'min-h-[240px]'];
@@ -158,6 +159,56 @@ const App: React.FC = () => {
     }
   }, [user]);
 
+  // --- DEEP LINKING & ROUTING HANDLER ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const imageId = params.get('image');
+    const userId = params.get('user');
+
+    if (imageId) {
+      // If URL has ?image=ID, subscribe to it and open modal
+      const unsubscribe = subscribeToImage(imageId, (img) => {
+        if (img) {
+          setSelectedImage(img);
+        }
+      });
+      return () => unsubscribe();
+    }
+    
+    if (userId) {
+      // If URL has ?user=ID, fetch user data (mocked from images for now as we don't have a users collection)
+      // In a real app, you'd fetch the user profile directly. 
+      // Here we fetch their images to reconstruct the profile header.
+      getImagesByUploader(userId).then(({ images }) => {
+        if (images.length > 0) {
+            const first = images[0];
+            const profile: ProfileUser = {
+                uploaderUid: first.uploaderUid,
+                uploaderName: first.uploaderName,
+                uploaderPhotoURL: first.uploaderPhotoURL
+            };
+            setProfileUser(profile);
+            setActiveView('profile');
+        }
+      });
+    }
+  }, []);
+
+  // Helper to update URL without page reload
+  const updateURL = (params: { image?: string; user?: string } | null) => {
+    const url = new URL(window.location.href);
+    url.search = ''; // Clear existing
+    
+    if (params?.image) {
+        url.searchParams.set('image', params.image);
+    }
+    if (params?.user) {
+        url.searchParams.set('user', params.user);
+    }
+    
+    window.history.pushState({}, '', url.toString());
+  };
+
   // --- Real-time Image Subscription ---
   useEffect(() => {
     let unsubscribe: () => void;
@@ -256,19 +307,16 @@ const App: React.FC = () => {
         setDisplayedImages(prev => [...prev, ...newImages]);
         setCurrentIndex(nextIndex);
     } else {
-        // Infinite Scroll Loop: If we run out, grab from the start again
-        // This creates an "endless" feeling
+        // Infinite Scroll Loop
         const newImages = allImages.slice(0, PAGE_SIZE);
         setDisplayedImages(prev => [...prev, ...newImages]);
-        // We don't reset currentIndex to 0 here to avoid breaking key logic if we used index,
-        // but since we append, we just cycle.
     }
   }, [currentIndex, allImages, imagesLoading]);
 
   useEffect(() => {
     const handleScroll = () => {
       if (activeView === 'home') {
-          const scrollThreshold = 1000; // Trigger earlier for smoother experience
+          const scrollThreshold = 1000;
           const isAtBottom = window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - scrollThreshold;
           
           if (isAtBottom) {
@@ -349,14 +397,17 @@ const App: React.FC = () => {
 
   const handleImageClick = (image: ImageMeta) => {
     setSelectedImage(image);
+    updateURL({ image: image.id });
   };
   
   const handleImageClickFromNotification = (partialImage: Partial<ImageMeta>) => {
     const fullImage = allImages.find(i => i.id === partialImage.id);
     if (fullImage) {
         setSelectedImage(fullImage);
-    } else {
-        console.warn("Could not find full image data for notification.", partialImage);
+        updateURL({ image: fullImage.id });
+    } else if (partialImage.id) {
+        // If not in feed, update URL so generic subscription picks it up
+        updateURL({ image: partialImage.id });
     }
   };
 
@@ -365,7 +416,7 @@ const App: React.FC = () => {
     setDroppedFile(null);
     if (activeView !== 'profile') {
         setActiveView('home');
-        // If we upload while on Home, scroll to top to see it
+        updateURL(null);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -385,19 +436,18 @@ const App: React.FC = () => {
     setProfileUser(userToView);
     setActiveView('profile');
     setSelectedImage(null);
+    updateURL({ user: userToView.uploaderUid });
   };
 
   const handleBack = () => {
     setActiveView(lastView);
     setProfileUser(null);
+    updateURL(null);
   }
   
   const handleSetView = (view: 'home' | 'explore' | 'notifications') => {
-    // If clicking the tab we are already on (Home or Explore), Refresh/Reshuffle the feed
     if (view === activeView && (view === 'home' || view === 'explore')) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        // Trigger a reshuffle of the existing images for a fresh look
         setAllImages(prevImages => {
              const reshuffled = smartSortImages(prevImages);
              setDisplayedImages(reshuffled.slice(0, PAGE_SIZE));
@@ -407,10 +457,11 @@ const App: React.FC = () => {
     } else {
         setActiveView(view);
         setProfileUser(null);
+        updateURL(null);
     }
   }
 
-  // Kept for optimistic updates, though subscription will also update eventually.
+  // Kept for optimistic updates
   const handleImageUpdate = (updatedImage: ImageMeta) => {
     const updater = (prevImages: ImageMeta[]) => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img);
     setDisplayedImages(updater);
@@ -434,42 +485,69 @@ const App: React.FC = () => {
         : [...oldLikedBy, user.uid];
 
     const updatedImage = { ...image, likedBy: newLikedBy, likeCount: newLikedBy.length };
-    handleImageUpdate(updatedImage); // Optimistic update
+    handleImageUpdate(updatedImage); 
 
     try {
         await toggleImageLike(image, user);
     } catch (error) {
         console.error("Failed to toggle like:", error);
-        handleImageUpdate(image); // Revert on failure
+        handleImageUpdate(image);
     }
   };
 
   const handleImageDelete = async (imageId: string) => {
     try {
         await deleteImageFromFirestore(imageId);
-        // Subscription will handle removal from lists
         setSelectedImage(null);
+        updateURL(null);
     } catch (error) {
         console.error("Failed to delete image:", error);
     }
   };
 
   const renderContent = () => {
-    // Only show skeleton on the very first load when no images are displayed yet.
     if (authLoading || (imagesLoading && displayedImages.length === 0 && activeView !== 'profile')) {
        return <SkeletonGrid />;
     }
     
     if (activeView === 'profile' && profileUser) {
-        return <ProfilePage user={profileUser} loggedInUser={user} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
+        return (
+            <>
+                <SEOHead 
+                    title={`${profileUser.uploaderName}'s Profile`}
+                    description={`Check out photos and images uploaded by ${profileUser.uploaderName} on Glass Gallery.`}
+                    imageUrl={profileUser.uploaderPhotoURL}
+                    type="profile"
+                    url={window.location.href}
+                />
+                <ProfilePage user={profileUser} loggedInUser={user} onBack={handleBack} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
+            </>
+        );
     }
     
     if (activeView === 'explore') {
-        return <ExplorePage images={allImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />;
+        return (
+            <>
+                <SEOHead 
+                    title="Explore Images"
+                    description="Discover trending categories and tags on Glass Gallery."
+                    url={window.location.href}
+                />
+                <ExplorePage images={allImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
+            </>
+        );
     }
 
+    // HOME
     return (
-        <ImageGrid images={displayedImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
+        <>
+            <SEOHead 
+                title="Home"
+                description="A modern image sharing platform. Discover and share beautiful images."
+                url={window.location.href}
+            />
+            <ImageGrid images={displayedImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
+        </>
     );
   }
 
@@ -534,7 +612,14 @@ const App: React.FC = () => {
         <ImageDetailModal
           image={selectedImage}
           user={user}
-          onClose={() => setSelectedImage(null)}
+          onClose={() => {
+            setSelectedImage(null);
+            if (activeView === 'profile' && profileUser) {
+                updateURL({ user: profileUser.uploaderUid });
+            } else {
+                updateURL(null);
+            }
+          }}
           onViewProfile={handleViewProfile}
           onImageUpdate={handleImageUpdate}
           onImageDelete={handleImageDelete}
