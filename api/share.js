@@ -8,10 +8,10 @@ export default async function handler(req, res) {
     return res.redirect('/');
   }
 
-  // Firestore REST API URL to fetch document without client SDK
-  // Using the project ID and API Key from your firebase config
+  // Credentials restored from user input
   const projectId = "primn-f0fa8";
   const apiKey = "AIzaSyBxdzcKYNEywQhK8MpdPpJwV17Ahux0NJQ"; 
+  
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/images/${id}?key=${apiKey}`;
 
   try {
