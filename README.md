@@ -33,8 +33,8 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/yourusername/glass-gallery.git
-    cd glass-gallery
+    git clone https://github.com/hello97-gg/glassgallery/.git
+    cd glassgallery
     ```
 
 2.  **Install dependencies**
