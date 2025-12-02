@@ -130,6 +130,7 @@ const ApiDocsPage: React.FC = () => {
     {
       "id": "7Hk29...",
       "imageUrl": "https://files.catbox.moe/abc.jpg",
+      "url": "https://files.catbox.moe/abc.jpg",
       "title": "Forest Morning",
       "description": "A shot taken in the woods...",
       "uploaderName": "Photographer123",

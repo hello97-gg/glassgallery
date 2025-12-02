@@ -57,9 +57,12 @@ export default async function handler(req, res) {
         // Extract flags/tags array
         const flagsArray = fields.flags?.arrayValue?.values?.map(v => v.stringValue) || [];
         
+        const imageUrl = fields.imageUrl?.stringValue || null;
+
         return {
             id: doc.document.name.split('/').pop(),
-            imageUrl: fields.imageUrl?.stringValue || null,
+            imageUrl: imageUrl,
+            url: imageUrl, // Alias for compatibility with clients expecting 'url'
             title: fields.title?.stringValue || null,
             description: fields.description?.stringValue || null,
             uploaderName: fields.uploaderName?.stringValue || 'Anonymous',
