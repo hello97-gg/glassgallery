@@ -595,7 +595,8 @@ const App: React.FC = () => {
           />
       </div>
 
-      <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8">
+      {/* Added min-w-0 to fix flex child overflow issues on mobile */}
+      <main className="flex-1 min-w-0 p-4 md:p-8 pb-20 md:pb-8">
         {renderContent()}
       </main>
 

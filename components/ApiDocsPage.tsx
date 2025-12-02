@@ -11,14 +11,14 @@ const CodeBlock = ({ code, language }: { code: string, language: string }) => {
   };
 
   return (
-    <div className="relative group rounded-lg overflow-hidden border border-border bg-black/30 mt-4">
+    <div className="relative group rounded-lg overflow-hidden border border-border bg-black/30 mt-4 max-w-full">
       <div className="flex justify-between items-center px-4 py-2 bg-surface/50 border-b border-border">
         <span className="text-xs font-mono text-secondary">{language}</span>
         <button onClick={handleCopy} className="text-xs text-secondary hover:text-primary transition-colors">
           {copied ? 'Copied!' : 'Copy'}
         </button>
       </div>
-      <pre className="p-4 overflow-x-auto text-sm font-mono text-gray-300">
+      <pre className="p-4 overflow-x-auto text-sm font-mono text-gray-300 whitespace-pre-wrap break-words">
         <code>{code}</code>
       </pre>
     </div>
@@ -27,34 +27,34 @@ const CodeBlock = ({ code, language }: { code: string, language: string }) => {
 
 const ApiDocsPage: React.FC = () => {
   return (
-    <div className="max-w-4xl mx-auto pb-20 animate-fade-in">
+    <div className="max-w-4xl mx-auto pb-20 animate-fade-in px-4 md:px-0 w-full">
         {/* Header */}
-        <div className="mb-10 text-center md:text-left">
-            <h1 className="text-4xl font-bold text-primary mb-4">Developer API</h1>
-            <p className="text-lg text-secondary">
+        <div className="mb-10 text-left">
+            <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">Developer API</h1>
+            <p className="text-base md:text-lg text-secondary leading-relaxed">
                 Integrate Glass Gallery images into your own applications, websites, or creative projects.
                 Our public API is free to use and requires no authentication for read-only access.
             </p>
         </div>
 
         {/* Endpoint Card */}
-        <div className="bg-surface border border-border rounded-xl p-6 mb-8 shadow-lg">
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <span className="px-3 py-1 rounded-md bg-accent/20 text-accent font-bold text-sm">GET</span>
-                <code className="text-primary font-mono text-lg break-all">https://glassgallery.vercel.app/api/random</code>
+        <div className="bg-surface border border-border rounded-xl p-5 md:p-6 mb-8 shadow-lg w-full overflow-hidden">
+            <div className="flex flex-col gap-3 mb-4">
+                <span className="self-start px-3 py-1 rounded-md bg-accent/20 text-accent font-bold text-sm">GET</span>
+                <code className="text-primary font-mono text-sm md:text-lg break-all">https://glassgallery.vercel.app/api/random</code>
             </div>
-            <p className="text-secondary mb-0">
+            <p className="text-secondary mb-0 text-sm md:text-base">
                 Fetches a random set of images from the gallery, optionally filtered by category or title.
             </p>
         </div>
 
         {/* Parameters */}
-        <div className="mb-12">
+        <div className="mb-12 w-full">
             <h2 className="text-2xl font-bold text-primary mb-6">Parameters</h2>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto border border-border rounded-lg w-full">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                     <thead>
-                        <tr className="border-b border-border">
+                        <tr className="border-b border-border bg-surface/50">
                             <th className="py-3 px-4 text-secondary font-medium text-sm">Name</th>
                             <th className="py-3 px-4 text-secondary font-medium text-sm">Type</th>
                             <th className="py-3 px-4 text-secondary font-medium text-sm">Default</th>
@@ -63,19 +63,19 @@ const ApiDocsPage: React.FC = () => {
                     </thead>
                     <tbody>
                          <tr className="border-b border-border/50">
-                            <td className="py-4 px-4 font-mono text-accent">category</td>
+                            <td className="py-4 px-4 font-mono text-accent text-sm">category</td>
                             <td className="py-4 px-4 text-secondary text-sm">string</td>
                             <td className="py-4 px-4 text-secondary text-sm">-</td>
                             <td className="py-4 px-4 text-primary text-sm">Filter images by tag/category (e.g., "Nature", "Abstract").</td>
                         </tr>
                         <tr className="border-b border-border/50">
-                            <td className="py-4 px-4 font-mono text-accent">title</td>
+                            <td className="py-4 px-4 font-mono text-accent text-sm">title</td>
                             <td className="py-4 px-4 text-secondary text-sm">string</td>
                             <td className="py-4 px-4 text-secondary text-sm">-</td>
                             <td className="py-4 px-4 text-primary text-sm">Search for partial matches in image titles.</td>
                         </tr>
                         <tr>
-                            <td className="py-4 px-4 font-mono text-accent">limit</td>
+                            <td className="py-4 px-4 font-mono text-accent text-sm">limit</td>
                             <td className="py-4 px-4 text-secondary text-sm">number</td>
                             <td className="py-4 px-4 text-secondary text-sm">1</td>
                             <td className="py-4 px-4 text-primary text-sm">Number of images to return. Min 1, Max 20.</td>
@@ -86,10 +86,10 @@ const ApiDocsPage: React.FC = () => {
         </div>
 
         {/* Examples */}
-        <div className="mb-12">
+        <div className="mb-12 w-full">
             <h2 className="text-2xl font-bold text-primary mb-6">Examples</h2>
             
-            <div className="mb-8">
+            <div className="mb-8 w-full">
                 <h3 className="text-lg font-semibold text-primary mb-2">JavaScript (Fetch)</h3>
                 <p className="text-secondary text-sm">Get 5 random images tagged 'Anime'.</p>
                 <CodeBlock 
@@ -105,7 +105,7 @@ const ApiDocsPage: React.FC = () => {
                 />
             </div>
 
-            <div>
+            <div className="w-full">
                 <h3 className="text-lg font-semibold text-primary mb-2">cURL</h3>
                 <CodeBlock 
                     language="bash" 
@@ -115,7 +115,7 @@ const ApiDocsPage: React.FC = () => {
         </div>
 
          {/* Response Format */}
-         <div>
+         <div className="w-full">
             <h2 className="text-2xl font-bold text-primary mb-6">Response Structure</h2>
             <CodeBlock 
                 language="json" 
