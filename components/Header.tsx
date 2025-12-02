@@ -45,6 +45,15 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
     }
   }
 
+  const getLogoText = () => {
+      switch(activeView) {
+          case 'explore': return 'Glass Explore';
+          case 'api': return 'Glass API';
+          case 'profile': return 'Glass Profile';
+          default: return 'Glass Gallery';
+      }
+  }
+
   return (
     <aside className="h-screen w-20 hover:w-56 transition-all duration-300 group bg-background border-r border-border p-3 flex flex-col sticky top-0 z-30">
       {/* Logo */}
@@ -55,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
         </div>
-        <span className="text-xl font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Glass</span>
+        <span className="text-xl font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{getLogoText()}</span>
       </div>
 
       {/* Navigation */}

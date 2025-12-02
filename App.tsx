@@ -17,7 +17,15 @@ import ProfilePage from './components/ProfilePage';
 import ApiDocsPage from './components/ApiDocsPage';
 import { MobileNotificationsModal } from './components/Notifications';
 import FullScreenDropzone from './components/FullScreenDropzone';
-import SEOHead from './components/SEOHead';
+import SEOHead, { DEFAULT_FAVICON } from './components/SEOHead';
+
+// --- Favicon SVG Data URIs ---
+// Compass Icon for Explore
+const EXPLORE_FAVICON = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f5c3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolygon points='16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76'/%3E%3C/svg%3E`;
+
+// Code/Terminal Icon for API
+const API_FAVICON = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f5c3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4'/%3E%3C/svg%3E`;
+
 
 // --- Skeleton Components for Initial Load ---
 const SKELETON_HEIGHTS = ['min-h-[200px]', 'min-h-[280px]', 'min-h-[360px]', 'min-h-[240px]'];
@@ -500,6 +508,7 @@ const App: React.FC = () => {
                     title="Developer API"
                     description="Integrate Glass Gallery into your applications with our public API."
                     url={window.location.href}
+                    favicon={API_FAVICON}
                 />
                 <ApiDocsPage />
             </>
@@ -519,6 +528,7 @@ const App: React.FC = () => {
                     imageUrl={profileUser.uploaderPhotoURL}
                     type="profile"
                     url={window.location.href}
+                    favicon={profileUser.uploaderPhotoURL}
                 />
                 <ProfilePage 
                     key={profileUser.uploaderUid}
@@ -541,6 +551,7 @@ const App: React.FC = () => {
                     title="Explore Images"
                     description="Discover trending categories and tags on Glass Gallery."
                     url={window.location.href}
+                    favicon={EXPLORE_FAVICON}
                 />
                 <ExplorePage 
                     images={allImages} 
@@ -562,6 +573,7 @@ const App: React.FC = () => {
                 title="Home"
                 description="A modern image sharing platform. Discover and share beautiful images."
                 url={window.location.href}
+                favicon={DEFAULT_FAVICON}
             />
             <ImageGrid images={displayedImages} user={user} onImageClick={handleImageClick} onViewProfile={handleViewProfile} onLikeToggle={handleLikeToggle} />
         </>
