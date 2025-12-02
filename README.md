@@ -33,8 +33,8 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/hello97-gg/glassgallery/.git
-    cd glassgallery
+    git clone https://github.com/yourusername/glass-gallery.git
+    cd glass-gallery
     ```
 
 2.  **Install dependencies**
@@ -49,6 +49,49 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
     ```bash
     npm run dev
     ```
+
+## 🌐 Public API
+
+Glass Gallery provides a free, public API for developers to fetch random images from the platform.
+
+**Endpoint:** `GET /api/random`
+
+### Parameters
+| Parameter | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `category` | string | Filter by tag (e.g., 'Nature', 'Anime') | - |
+| `title` | string | Search within image titles | - |
+| `limit` | number | Number of images to return (max 20) | 1 |
+
+### Example Usage
+
+**Fetch 1 random image:**
+```bash
+curl https://glassgallery.vercel.app/api/random
+```
+
+**Fetch 5 random 'Nature' images:**
+```bash
+curl "https://glassgallery.vercel.app/api/random?category=Nature&limit=5"
+```
+
+**Response Format:**
+```json
+{
+  "success": true,
+  "count": 1,
+  "filter": { "category": "Nature", "title": "any" },
+  "data": [
+    {
+      "id": "abc-123",
+      "imageUrl": "https://files.catbox.moe/xyz.jpg",
+      "title": "Beautiful Sunset",
+      "tags": ["Nature", "Photography"],
+      "uploaderName": "Jane Doe"
+    }
+  ]
+}
+```
 
 ## ⚙️ Configuration
 

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { User } from 'firebase/auth';
 import { ProfileUser, Notification } from '../types';
@@ -6,8 +7,8 @@ interface BottomNavProps {
   user: User | null;
   onCreateClick: () => void;
   onLoginClick: () => void;
-  activeView: 'home' | 'explore' | 'profile' | 'notifications';
-  setView: (view: 'home' | 'explore' | 'notifications') => void;
+  activeView: 'home' | 'explore' | 'profile' | 'notifications' | 'api';
+  setView: (view: 'home' | 'explore' | 'notifications' | 'api') => void;
   onViewProfile: (user: ProfileUser) => void;
   notifications: Notification[];
   onNotificationsClick: () => void;

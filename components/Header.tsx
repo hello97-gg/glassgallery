@@ -9,8 +9,8 @@ interface SidebarProps {
   user: User | null;
   onCreateClick: () => void;
   onLoginClick: () => void;
-  activeView: 'home' | 'explore' | 'profile' | 'notifications';
-  setView: (view: 'home' | 'explore' | 'notifications') => void;
+  activeView: 'home' | 'explore' | 'profile' | 'notifications' | 'api';
+  setView: (view: 'home' | 'explore' | 'notifications' | 'api') => void;
   onViewProfile: (user: ProfileUser) => void;
   notifications: Notification[];
   onImageClick: (image: ImageMeta) => void;
@@ -70,6 +70,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onCreateClick, onLoginClick, ac
             <circle cx="12" cy="12" r="10" />
             <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
           </svg>
+        </NavItem>
+        <NavItem label="API" active={activeView === 'api'} onClick={() => setView('api')}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
         </NavItem>
         {user && (
             <NotificationBell 

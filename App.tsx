@@ -14,6 +14,7 @@ import UploadModal from './components/UploadModal';
 import ImageDetailModal from './components/ImageDetailModal';
 import ExplorePage from './components/ExplorePage';
 import ProfilePage from './components/ProfilePage';
+import ApiDocsPage from './components/ApiDocsPage';
 import { MobileNotificationsModal } from './components/Notifications';
 import FullScreenDropzone from './components/FullScreenDropzone';
 import SEOHead from './components/SEOHead';
@@ -116,9 +117,9 @@ const App: React.FC = () => {
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
   const [isNotificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
   
-  const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile' | 'notifications'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile' | 'notifications' | 'api'>('home');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
-  const [lastView, setLastView] = useState<'home' | 'explore'>('home');
+  const [lastView, setLastView] = useState<'home' | 'explore' | 'api'>('home');
   
   // New state for Explore search
   const [exploreSearchTerm, setExploreSearchTerm] = useState('');
@@ -157,6 +158,7 @@ const App: React.FC = () => {
     const imageId = params.get('image');
     const userId = params.get('user');
     const searchTerm = params.get('search');
+    const viewParam = params.get('view');
 
     if (imageId) {
       const unsubscribe = subscribeToImage(imageId, (img) => {
@@ -168,9 +170,6 @@ const App: React.FC = () => {
     }
     
     if (userId) {
-      // Construct a basic profile user. The ProfilePage will fetch rich data.
-      // We ideally need name/photo to show *something* immediately or just pass ID.
-      // For now, we just pass the ID and let ProfilePage handle fetching.
        const profile: ProfileUser = {
            uploaderUid: userId,
            uploaderName: 'Loading...',
@@ -178,19 +177,22 @@ const App: React.FC = () => {
        };
        setProfileUser(profile);
        setActiveView('profile');
+    } else if (viewParam === 'api') {
+        setActiveView('api');
     } else if (searchTerm) {
         setExploreSearchTerm(searchTerm);
         setActiveView('explore');
     }
   }, []);
 
-  const updateURL = (params: { image?: string; user?: string; search?: string } | null) => {
+  const updateURL = (params: { image?: string; user?: string; search?: string; view?: string } | null) => {
     const url = new URL(window.location.href);
     url.search = ''; 
     
     if (params?.image) url.searchParams.set('image', params.image);
     if (params?.user) url.searchParams.set('user', params.user);
     if (params?.search) url.searchParams.set('search', params.search);
+    if (params?.view) url.searchParams.set('view', params.view);
     
     window.history.pushState({}, '', url.toString());
   };
@@ -407,7 +409,7 @@ const App: React.FC = () => {
 
   const handleViewProfile = (userToView: ProfileUser) => {
     if (activeView !== 'profile') {
-        setLastView(activeView as 'home' | 'explore');
+        setLastView(activeView as 'home' | 'explore' | 'api');
     }
     setProfileUser(userToView);
     setActiveView('profile');
@@ -421,7 +423,7 @@ const App: React.FC = () => {
     updateURL(null);
   }
   
-  const handleSetView = (view: 'home' | 'explore' | 'notifications') => {
+  const handleSetView = (view: 'home' | 'explore' | 'notifications' | 'api') => {
     if (view === activeView && (view === 'home' || view === 'explore')) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setAllImages(prevImages => {
@@ -438,7 +440,12 @@ const App: React.FC = () => {
         setActiveView(view);
         setProfileUser(null);
         setExploreSearchTerm('');
-        updateURL(null);
+        
+        if (view === 'api') {
+            updateURL({ view: 'api' });
+        } else {
+            updateURL(null);
+        }
     }
   }
 
@@ -486,6 +493,19 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    if (activeView === 'api') {
+        return (
+            <>
+                <SEOHead 
+                    title="Developer API"
+                    description="Integrate Glass Gallery into your applications with our public API."
+                    url={window.location.href}
+                />
+                <ApiDocsPage />
+            </>
+        );
+    }
+
     if (authLoading || (imagesLoading && displayedImages.length === 0 && activeView !== 'profile')) {
        return <SkeletonGrid />;
     }
@@ -529,6 +549,7 @@ const App: React.FC = () => {
                     onViewProfile={handleViewProfile} 
                     onLikeToggle={handleLikeToggle}
                     initialSearchTerm={exploreSearchTerm}
+                    onNavigateToApi={() => handleSetView('api')}
                 />
             </>
         );
@@ -614,6 +635,8 @@ const App: React.FC = () => {
                 updateURL({ user: profileUser.uploaderUid });
             } else if (activeView === 'explore' && exploreSearchTerm) {
                 updateURL({ search: exploreSearchTerm });
+            } else if (activeView === 'api') {
+                updateURL({ view: 'api' });
             } else {
                 updateURL(null);
             }
