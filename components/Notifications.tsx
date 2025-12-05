@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Notification, ImageMeta } from '../types';
 import { markNotificationsAsRead } from '../services/firestoreService';
@@ -47,7 +48,7 @@ const NotificationsList: React.FC<NotificationProps> = ({ notifications, onClose
             <Button onClick={handleMarkAllRead} variant="secondary" size="sm">Mark all as read</Button>
           )}
         </div>
-        <div className="flex-grow overflow-y-auto">
+        <div className="flex-grow overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-secondary/50">
           {notifications.length > 0 ? (
             notifications.map(n => (
               <div
