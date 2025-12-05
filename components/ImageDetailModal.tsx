@@ -117,7 +117,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // New state for delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAttribution, setShowAttribution] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -222,8 +222,6 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
       setIsDeleting(true);
       try {
           onImageDelete(currentImage.id);
-          // Note: The parent component usually handles closing the modal 
-          // or redirecting after the onImageDelete callback is fired.
       } catch (error) {
           console.error("Delete failed", error);
           setIsDeleting(false);
@@ -236,25 +234,23 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     setCurrentImage(prev => ({ ...prev, downloadCount: (prev.downloadCount || 0) + 1 }));
     onImageUpdate({ ...currentImage, downloadCount: (currentImage.downloadCount || 0) + 1 });
 
-    try {
-      const response = await fetch(currentImage.imageUrl);
-      if (!response.ok) throw new Error('Network response was not ok.');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      const filename = currentImage.imageUrl.split('/').pop()?.split('?')[0] || 'download.jpg';
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-      setShowAttribution(true);
-    } catch (error) {
-      console.error('Download failed:', error);
-      alert('Could not download the image. Please try again.');
-    }
+    const filename = currentImage.imageUrl.split('/').pop()?.split('?')[0] || 'download.jpg';
+    
+    // Use the proxy endpoint to avoid CORS issues.
+    // The proxy must return Content-Disposition: attachment for this to work as a download.
+    const proxyUrl = `/api/downloadProxy?url=${encodeURIComponent(currentImage.imageUrl)}&filename=${encodeURIComponent(filename)}`;
+    
+    // Create a temporary link and click it. 
+    // This uses the browser's native download capability via the proxy headers,
+    // avoiding the need for client-side blob processing (which can hit CORS limits).
+    const a = document.createElement('a');
+    a.href = proxyUrl;
+    a.download = filename; // This attribute is a hint, the server header takes precedence
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    setShowAttribution(true);
   };
 
   const handleShare = async () => {
