@@ -13,7 +13,6 @@ export const config = {
 // Configuration from your prompt
 const R2_ACCOUNT_ID = "d8e8828f54e7dac7c17e397d1998f745";
 const R2_BUCKET = "glassgallery";
-const R2_PUBLIC_DOMAIN = "https://pub-8a3c4514ecbd473abdb5b92645933a3d.r2.dev";
 
 // Initialize S3 Client for Cloudflare R2
 const S3 = new S3Client({
@@ -38,12 +37,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing 'file' or 'name' in request body." });
     }
     
-    // Use the hardcoded public domain or override with env var
-    const publicDomain = process.env.R2_PUBLIC_DOMAIN || R2_PUBLIC_DOMAIN;
+    // Check for Public Domain config immediately
+    const publicDomain = process.env.R2_PUBLIC_DOMAIN;
+    if (!publicDomain) {
+        throw new Error("Server Misconfiguration: R2_PUBLIC_DOMAIN environment variable is missing.");
+    }
 
     let buffer = Buffer.from(file, "base64");
     
-    // --- Image Compression Logic ---
+    // --- Image Compression Logic (Same as previous) ---
     const image = sharp(buffer);
     const metadata = await image.metadata();
 
