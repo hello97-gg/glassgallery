@@ -117,6 +117,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
   
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // New state for delete confirmation
   const [error, setError] = useState<string | null>(null);
   const [showAttribution, setShowAttribution] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -213,10 +214,20 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
     }
   };
   
-  const handleDelete = async () => {
-      if (window.confirm("Are you sure you want to permanently delete this image? This action cannot be undone.")) {
-          setIsDeleting(true);
+  const handleDeleteClick = () => {
+      setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+      setIsDeleting(true);
+      try {
           onImageDelete(currentImage.id);
+          // Note: The parent component usually handles closing the modal 
+          // or redirecting after the onImageDelete callback is fired.
+      } catch (error) {
+          console.error("Delete failed", error);
+          setIsDeleting(false);
+          setShowDeleteConfirm(false);
       }
   };
 
@@ -412,7 +423,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
         type="article"
       />
 
-      <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
         <div className="md:w-2/3 bg-background flex items-center justify-center p-2 relative group select-none">
             <img 
                 src={currentImage.imageUrl} 
@@ -499,7 +510,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
                     </>
                 ) : (
                     <>
-                         <Button onClick={handleDelete} variant="secondary" className="!bg-red-900/50 !text-red-400 hover:!bg-red-800/50" disabled={isDeleting}>
+                         <Button onClick={handleDeleteClick} variant="secondary" className="!bg-red-900/50 !text-red-400 hover:!bg-red-800/50" disabled={isDeleting}>
                             {isDeleting ? <Spinner/> : 'Delete'}
                         </Button>
                         <Button onClick={handleEditToggle} variant="secondary">
@@ -510,6 +521,31 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
             </div>
           )}
         </div>
+
+        {/* Delete Confirmation Overlay */}
+        {showDeleteConfirm && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl transform scale-100 animate-fade-in text-center">
+              <div className="w-12 h-12 rounded-full bg-red-900/30 text-red-500 flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-primary mb-2">Delete Image</h3>
+              <p className="text-secondary text-sm mb-6">
+                Are you sure you want to permanently delete this image? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
+                  Cancel
+                </Button>
+                <Button onClick={handleConfirmDelete} className="!bg-red-600 hover:!bg-red-700 text-white" disabled={isDeleting}>
+                  {isDeleting ? <Spinner /> : 'Delete Forever'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
        {showAttribution && <AttributionModal image={currentImage} onClose={() => setShowAttribution(false)} />}
     </div>
