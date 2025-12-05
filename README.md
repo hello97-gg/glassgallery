@@ -52,7 +52,8 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
     ```
     R2_ACCESS_KEY_ID=your_cloudflare_access_key
     R2_SECRET_ACCESS_KEY=your_cloudflare_secret_key
-    R2_PUBLIC_DOMAIN=https://pub-xxxxxxxx.r2.dev  # OR your custom domain like https://images.yourdomain.com
+    # Optional if hardcoded in api/uploadToR2.js:
+    R2_PUBLIC_DOMAIN=https://pub-8a3c4514ecbd473abdb5b92645933a3d.r2.dev
     ```
     *Note: You must enable "Public Access" on your R2 bucket settings in Cloudflare or connect a domain.*
 
@@ -95,7 +96,7 @@ curl "https://glassgallery.vercel.app/api/random?category=Nature&limit=5"
   "data": [
     {
       "id": "abc-123",
-      "imageUrl": "https://pub-xxxx.r2.dev/17099999-image.jpg",
+      "imageUrl": "https://pub-8a3c4514ecbd473abdb5b92645933a3d.r2.dev/17099999-image.jpg",
       "title": "Beautiful Sunset",
       "tags": ["Nature", "Photography"],
       "uploaderName": "Jane Doe"
