@@ -40,8 +40,8 @@ const NotificationsList: React.FC<NotificationProps> = ({ notifications, onClose
     };
     
     return (
-      <div className="w-full max-w-sm bg-surface border border-border rounded-lg shadow-xl z-20 overflow-hidden flex flex-col">
-        <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0">
+      <div className="w-full max-w-sm bg-surface border border-border rounded-lg shadow-xl z-20 overflow-hidden flex flex-col max-h-[70vh]">
+        <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0 bg-surface">
           <h3 className="font-semibold text-primary">Notifications</h3>
           {notifications.some(n => !n.read) && (
             <Button onClick={handleMarkAllRead} variant="secondary" size="sm">Mark all as read</Button>
@@ -84,7 +84,7 @@ const NotificationsPanel: React.FC<NotificationProps> = ({ notifications, onClos
 export const MobileNotificationsModal: React.FC<NotificationProps> = ({ notifications, onClose, onImageClick }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm md:hidden animate-fade-in" onClick={onClose}>
-            <div className="max-h-[80vh] flex" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full flex justify-center" onClick={(e) => e.stopPropagation()}>
                 <NotificationsList notifications={notifications} onClose={onClose} onImageClick={onImageClick} />
             </div>
         </div>
