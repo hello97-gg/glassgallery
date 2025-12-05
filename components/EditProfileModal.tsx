@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import type { ProfileUser } from '../types';
-import { uploadToCatbox } from '../services/catboxService';
+import { uploadImage } from '../services/storageService';
 import { updateUserProfile } from '../services/firestoreService';
 import Button from './Button';
 import Spinner from './Spinner';
@@ -70,11 +70,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
         let newBgURL = user.backgroundImageURL || '';
 
         if (avatarFile) {
-            const res = await uploadToCatbox(avatarFile);
+            const res = await uploadImage(avatarFile);
             newPhotoURL = res.url;
         }
         if (bgFile) {
-            const res = await uploadToCatbox(bgFile);
+            const res = await uploadImage(bgFile);
             newBgURL = res.url;
         }
 
@@ -93,7 +93,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
 
     } catch (err) {
         console.error(err);
-        setError("Failed to update profile.");
+        setError("Failed to update profile. Please try again.");
     } finally {
         setIsLoading(false);
     }

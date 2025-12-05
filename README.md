@@ -6,7 +6,7 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
 ## 🌟 Features
 
 -   **Authentication:** Secure login via Google and Apple (powered by Firebase).
--   **Image Upload:** Drag-and-drop uploads with automatic compression and optimization.
+-   **Image Upload:** Drag-and-drop uploads with automatic compression and optimization (Cloudflare R2).
 -   **Explore:** Discover images by tags, location, or full-text search.
 -   **Location Picking:** Interactive map to tag image locations.
 -   **User Profiles:** Customizable profiles with header images, bios, and stats.
@@ -18,7 +18,7 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
 -   **Frontend:** React 19, TypeScript, Vite
 -   **Styling:** Tailwind CSS
 -   **Backend / Database:** Firebase (Auth, Firestore)
--   **Image Hosting:** Catbox (via API proxy)
+-   **Image Hosting:** Cloudflare R2 (S3-compatible)
 -   **Maps:** Leaflet / OpenStreetMap
 
 ## 🚀 Getting Started
@@ -28,6 +28,7 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
 -   Node.js (v18+)
 -   npm or yarn
 -   A Firebase Project
+-   A Cloudflare R2 Bucket
 
 ### Installation
 
@@ -43,9 +44,19 @@ Glass Gallery is a modern, aesthetically pleasing image sharing platform built w
     ```
 
 3.  **Configure Credentials**
-    Open `services/firebase.ts` and `api/share.js` and replace the placeholder strings (`YOUR_API_KEY`, `YOUR_PROJECT_ID`, etc.) with your actual Firebase project details. You can find these in your Firebase Console under **Project Settings > General > Your apps**.
+    Open `services/firebase.ts` and `api/share.js` and replace the placeholder strings (`YOUR_API_KEY`, `YOUR_PROJECT_ID`, etc.) with your actual Firebase project details.
 
-4.  **Run the development server**
+4.  **Configure Environment Variables (Secrets)**
+    Create a `.env` file (or set these in your Vercel/GitHub dashboard) with the following keys for Image Uploading:
+    
+    ```
+    R2_ACCESS_KEY_ID=your_cloudflare_access_key
+    R2_SECRET_ACCESS_KEY=your_cloudflare_secret_key
+    R2_PUBLIC_DOMAIN=https://pub-xxxxxxxx.r2.dev  # OR your custom domain like https://images.yourdomain.com
+    ```
+    *Note: You must enable "Public Access" on your R2 bucket settings in Cloudflare or connect a domain.*
+
+5.  **Run the development server**
     ```bash
     npm run dev
     ```
@@ -84,7 +95,7 @@ curl "https://glassgallery.vercel.app/api/random?category=Nature&limit=5"
   "data": [
     {
       "id": "abc-123",
-      "imageUrl": "https://files.catbox.moe/xyz.jpg",
+      "imageUrl": "https://pub-xxxx.r2.dev/17099999-image.jpg",
       "title": "Beautiful Sunset",
       "tags": ["Nature", "Photography"],
       "uploaderName": "Jane Doe"

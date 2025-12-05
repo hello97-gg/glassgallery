@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
-import { uploadToCatbox } from '../services/catboxService';
+import { uploadImage } from '../services/storageService';
 import { addImageToFirestore } from '../services/firestoreService';
 import { LICENSES, FLAGS } from '../constants';
 import Button from './Button';
@@ -136,11 +136,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ user, onClose, onUploadSucces
     setLoadingMessage('Uploading image...');
     setError(null);
     try {
-      const { url: imageUrl } = await uploadToCatbox(file);
+      const { url: imageUrl } = await uploadImage(file);
       await addImageToFirestore(user, imageUrl, title, description, license, selectedFlags, originalWorkUrl, license === 'Other' ? licenseUrl : '', location);
       onUploadSuccess();
-    } catch (err) {
-      setError('Upload failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Upload failed. Please check your connection.');
       console.error(err);
     } finally {
       setIsLoading(false);
