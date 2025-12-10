@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 // Fix: Use Firebase v8 compatibility User type.
 import type { User } from 'firebase/auth';
 import { auth } from './services/firebase';
-import { subscribeToImages, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike, PAGE_SIZE, subscribeToImage, getImagesByUploader } from './services/firestoreService';
+import { subscribeToImages, deleteImageFromFirestore, getNotificationsForUser, toggleImageLike, PAGE_SIZE, subscribeToImage, getImagesByUploader, getImagesFromFirestore } from './services/firestoreService';
 import type { ImageMeta, ProfileUser, Notification } from './types';
 
 import Sidebar from './components/Header';
@@ -205,17 +205,34 @@ const App: React.FC = () => {
     window.history.pushState({}, '', url.toString());
   };
 
-  // --- Real-time Image Subscription ---
+  // --- Image Data Fetching Strategy ---
+  // We use a hybrid approach:
+  // 1. Fetch once with .get() to ensure crawlers/bots get data immediately without waiting for websocket.
+  // 2. Set up .onSnapshot() for real-time updates for connected users.
   useEffect(() => {
     let unsubscribe: () => void;
 
     if (activeView === 'home' || activeView === 'explore') {
         if (allImages.length === 0) {
             setImagesLoading(true);
+            
+            // Initial explicit fetch for SEO/fast first paint
+            getImagesFromFirestore().then(({ images }) => {
+                 const sorted = smartSortImages(images);
+                 setAllImages(sorted);
+                 setDisplayedImages(sorted.slice(0, PAGE_SIZE));
+                 setCurrentIndex(PAGE_SIZE);
+                 setImagesLoading(false);
+            }).catch(err => {
+                console.error("Initial fetch failed", err);
+                setImagesLoading(false);
+            });
         }
         
+        // Real-time listener
         unsubscribe = subscribeToImages((fetchedImages) => {
             setAllImages((prevImages) => {
+                 // If this is the very first load and get() hasn't finished, handle it
                  if (prevImages.length === 0) {
                      const sorted = smartSortImages(fetchedImages);
                      setDisplayedImages(sorted.slice(0, PAGE_SIZE));
@@ -224,6 +241,7 @@ const App: React.FC = () => {
                      return sorted;
                  }
                  
+                 // Merge updates logic
                  const newMap = new Map(fetchedImages.map(i => [i.id, i]));
                  const currentIds = new Set(prevImages.map(i => i.id));
                  const newUploads = fetchedImages.filter(i => !currentIds.has(i.id));
@@ -241,6 +259,7 @@ const App: React.FC = () => {
                      updatedList = [...sortedNew, ...updatedList];
                  }
                  
+                 // Update display list quietly
                  setDisplayedImages(prevDisplayed => {
                     let updatedDisplayed = prevDisplayed
                         .filter(d => newMap.has(d.id)) 
@@ -257,8 +276,7 @@ const App: React.FC = () => {
 
                     return updatedDisplayed;
                  });
-
-                 setImagesLoading(false);
+                 
                  return updatedList;
             });
         });
@@ -515,7 +533,9 @@ const App: React.FC = () => {
         );
     }
 
-    if (authLoading || (imagesLoading && displayedImages.length === 0 && activeView !== 'profile')) {
+    // Fix for SEO: Do NOT block on authLoading. Only block if images are strictly loading and empty.
+    // If auth is loading, we just render as if 'guest'.
+    if (imagesLoading && displayedImages.length === 0 && activeView !== 'profile') {
        return <SkeletonGrid />;
     }
     
