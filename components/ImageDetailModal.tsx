@@ -417,6 +417,7 @@ const ImageDetailModal: React.FC<ImageDetailModalProps> = ({ image, user, onClos
         imageUrl={currentImage.imageUrl}
         url={window.location.href}
         type="article"
+        author={currentImage.uploaderName}
       />
 
       <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative" onClick={(e) => e.stopPropagation()}>

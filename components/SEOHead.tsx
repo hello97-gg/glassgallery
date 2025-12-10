@@ -11,9 +11,10 @@ interface SEOHeadProps {
   url?: string;
   type?: 'website' | 'article' | 'profile';
   favicon?: string;
+  author?: string;
 }
 
-const SEOHead: React.FC<SEOHeadProps> = ({ title, description, imageUrl, url, type = 'website', favicon }) => {
+const SEOHead: React.FC<SEOHeadProps> = ({ title, description, imageUrl, url, type = 'website', favicon, author }) => {
   useEffect(() => {
     // 1. Update Title
     document.title = `${title} | Glass Gallery`;
@@ -76,17 +77,23 @@ const SEOHead: React.FC<SEOHeadProps> = ({ title, description, imageUrl, url, ty
 
     if (type === 'article' && imageUrl) {
         // ImageObject schema for image details
+        // This structure tells Google: "Here is an image, here is who made it, and here is how to get it."
         schema = {
             ...baseSchema,
             "@type": "ImageObject",
             "contentUrl": imageUrl,
             "license": "https://creativecommons.org/licenses/by/4.0/",
+            "acquireLicensePage": url,
             "name": title,
             "description": description,
             "thumbnail": imageUrl,
             "author": {
-                 "@type": "Organization",
-                 "name": "Glass Gallery User"
+                 "@type": "Person",
+                 "name": author || "Glass Gallery User"
+            },
+            "creator": {
+                 "@type": "Person",
+                 "name": author || "Glass Gallery User"
             }
         };
     } else if (type === 'profile') {
@@ -120,7 +127,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({ title, description, imageUrl, url, ty
     return () => {
       document.title = 'Glass Gallery';
     };
-  }, [title, description, imageUrl, url, type, favicon]);
+  }, [title, description, imageUrl, url, type, favicon, author]);
 
   return null;
 };
