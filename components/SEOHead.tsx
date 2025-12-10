@@ -1,8 +1,8 @@
 
 import React, { useEffect } from 'react';
 
-// Default Glass Gallery Logo (Box/Gallery Icon) - Peach Accent Color #f5c3b8
-export const DEFAULT_FAVICON = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f5c3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z'/%3E%3Cpath d='M15 13a3 3 0 11-6 0 3 3 0 016 0z'/%3E%3C/svg%3E`;
+// Default Glass Gallery Logo - Uses the static file for better caching/performance
+export const DEFAULT_FAVICON = '/favicon.svg';
 
 interface SEOHeadProps {
   title: string;
@@ -59,11 +59,66 @@ const SEOHead: React.FC<SEOHeadProps> = ({ title, description, imageUrl, url, ty
         link.href = activeFavicon;
     }
 
+    // 7. Structured Data (JSON-LD) - Critical for Google Images & SEO
+    let script = document.querySelector('script[type="application/ld+json"]');
+    if (!script) {
+        script = document.createElement('script');
+        script.setAttribute('type', 'application/ld+json');
+        document.head.appendChild(script);
+    }
+
+    const baseSchema = {
+        "@context": "https://schema.org",
+        "url": url || "https://glassgallery.vercel.app",
+    };
+
+    let schema: any = { ...baseSchema };
+
+    if (type === 'article' && imageUrl) {
+        // ImageObject schema for image details
+        schema = {
+            ...baseSchema,
+            "@type": "ImageObject",
+            "contentUrl": imageUrl,
+            "license": "https://creativecommons.org/licenses/by/4.0/",
+            "name": title,
+            "description": description,
+            "thumbnail": imageUrl,
+            "author": {
+                 "@type": "Organization",
+                 "name": "Glass Gallery User"
+            }
+        };
+    } else if (type === 'profile') {
+        // Profile schema
+        schema = {
+             ...baseSchema,
+             "@type": "ProfilePage",
+             "mainEntity": {
+                 "@type": "Person",
+                 "name": title.replace("'s Profile", ""),
+                 "image": imageUrl
+             }
+        };
+    } else {
+        // WebSite schema for homepage with search box
+        schema = {
+            ...baseSchema,
+            "@type": "WebSite",
+            "name": "Glass Gallery",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://glassgallery.vercel.app/?search={search_term_string}",
+                "query-input": "required name=search_term_string"
+            }
+        };
+    }
+    
+    script.textContent = JSON.stringify(schema);
+
     // Cleanup: Reset title when component unmounts
     return () => {
       document.title = 'Glass Gallery';
-      // We don't strictly reset the favicon on unmount to prevent rapid flickering during transitions,
-      // as the next page will set its own favicon immediately.
     };
   }, [title, description, imageUrl, url, type, favicon]);
 
