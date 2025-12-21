@@ -1,9 +1,11 @@
+
 import React from 'react';
 import { signInWithGoogle, signInWithApple } from '../services/firebase';
 import Button from './Button';
 
 interface LoginModalProps {
     onClose: () => void;
+    onOpenLegal?: (tab: 'terms' | 'privacy' | 'guidelines') => void;
 }
 
 const GoogleIcon = () => (
@@ -17,7 +19,7 @@ const AppleIcon = () => (
     </svg>
 );
 
-const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
+const LoginModal: React.FC<LoginModalProps> = ({ onClose, onOpenLegal }) => {
     const handleLogin = async (loginProvider: () => Promise<any>) => {
         try {
             await loginProvider();
@@ -39,6 +41,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                         Sign in to create and share your images.
                     </p>
                 </div>
+                
                 <div className="space-y-4 pt-2">
                     <Button onClick={() => handleLogin(signInWithGoogle)} fullWidth variant="secondary">
                         <GoogleIcon /> Sign in with Google
@@ -46,6 +49,25 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                     <Button onClick={() => handleLogin(signInWithApple)} fullWidth variant="secondary">
                         <AppleIcon /> Sign in with Apple
                     </Button>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                    <p className="text-xs text-secondary leading-relaxed">
+                        By continuing, you acknowledge that you have read and agree to our{' '}
+                        <button 
+                            onClick={() => onOpenLegal && onOpenLegal('terms')} 
+                            className="text-accent hover:underline font-medium"
+                        >
+                            Terms of Service
+                        </button>
+                        {' '}and{' '}
+                        <button 
+                            onClick={() => onOpenLegal && onOpenLegal('privacy')} 
+                            className="text-accent hover:underline font-medium"
+                        >
+                            Privacy Policy
+                        </button>.
+                    </p>
                 </div>
             </div>
         </div>

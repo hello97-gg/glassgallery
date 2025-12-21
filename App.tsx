@@ -15,6 +15,7 @@ import ImageDetailModal from './components/ImageDetailModal';
 import ExplorePage from './components/ExplorePage';
 import ProfilePage from './components/ProfilePage';
 import ApiDocsPage from './components/ApiDocsPage';
+import LegalModal from './components/LegalModal';
 import { MobileNotificationsModal } from './components/Notifications';
 import FullScreenDropzone from './components/FullScreenDropzone';
 import SEOHead, { DEFAULT_FAVICON } from './components/SEOHead';
@@ -125,6 +126,10 @@ const App: React.FC = () => {
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
   const [isNotificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
   
+  // Legal Modal State
+  const [isLegalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState<'terms' | 'privacy' | 'guidelines'>('terms');
+
   const [activeView, setActiveView] = useState<'home' | 'explore' | 'profile' | 'notifications' | 'api'>('home');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [lastView, setLastView] = useState<'home' | 'explore' | 'api'>('home');
@@ -475,6 +480,11 @@ const App: React.FC = () => {
     }
   }
 
+  const handleOpenLegal = (tab: 'terms' | 'privacy' | 'guidelines' = 'terms') => {
+      setLegalModalTab(tab);
+      setLegalModalOpen(true);
+  };
+
   const handleImageUpdate = (updatedImage: ImageMeta) => {
     const updater = (prevImages: ImageMeta[]) => prevImages.map(img => img.id === updatedImage.id ? updatedImage : img);
     setDisplayedImages(updater);
@@ -612,6 +622,7 @@ const App: React.FC = () => {
             onViewProfile={handleViewProfile}
             notifications={notifications}
             onImageClick={handleImageClickFromNotification}
+            onOpenLegal={handleOpenLegal}
           />
       </div>
 
@@ -645,7 +656,19 @@ const App: React.FC = () => {
         />
       )}
 
-      {isLoginModalOpen && <LoginModal onClose={() => setLoginModalOpen(false)} />}
+      {isLoginModalOpen && (
+        <LoginModal 
+            onClose={() => setLoginModalOpen(false)} 
+            onOpenLegal={handleOpenLegal}
+        />
+      )}
+      
+      {isLegalModalOpen && (
+        <LegalModal
+            onClose={() => setLegalModalOpen(false)}
+            initialTab={legalModalTab}
+        />
+      )}
       
       {isNotificationsPanelOpen && user && (
         <MobileNotificationsModal
